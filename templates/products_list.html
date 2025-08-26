@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Data</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_list.css') }}">
+</head>
+<body>
+
+
+
+    <div class="container">
+    <table border="1" width="">
+    	<caption>Products</caption>
+        <tr>
+        	<th class="titles">ID</th>
+            <th class="titles">Name</th>
+            <th class="titles">Price</th>
+            <th class="titles">Barcode</th>
+            <th class="titles"></th>
+            <th class="titles"></th>
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+            <td>
+ <button onclick="window.open('/product/{{ row[0] }}/edit', '_blank', 'width=600,height=400')">
+ Edit
+ </button>
+</td>
+<td>
+ <button onclick="window.open('/product/{{ row[0] }}/remove', '_blank', 'width=600,height=400')">
+ Remove
+ </button>
+</td>
+        </tr>
+        {% endfor %}
+    </table>
+   </div>
+ <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+<script src="{{ url_for('static', filename='js/product_list.js') }}"></script>
+</body>
+</html>

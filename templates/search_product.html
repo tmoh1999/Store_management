@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Search Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+</head>
+<body>
+    <h1>Results for "{{ query }}"</h1>
+
+    {% if results %}
+        <ul>
+        {% for product in results %}
+            <li>{{ product.name }} - {{ product.current_price }}Da (Barcode: {{ product.barcode }})</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No results found.</p>
+    {% endif %}
+
+    <a href="javascript:history.go(-1)">⬅ Back</a>
+</body>
+</html>

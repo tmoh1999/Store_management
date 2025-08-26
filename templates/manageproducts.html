@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Status App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+
+</head>
+<body>
+<div class="container2">  
+<label >Products</label>
+
+
+</div>
+
+
+<form action="/addproducts">
+    <br><br><br><br><br><br>
+     <div class="container">
+     <button type="submit">add products</button>
+     </div>
+</form>
+<form action="/productlist">
+    <br><br><br><br><br><br>
+     <div class="container">
+     <button type="submit">product list</button>
+     </div>
+</form>
+    <form id="search_form" action="/search" method="get">
+    <div class="container2">
+    	    <br><br><br><br><br><br>
+        <input id="search_q" type="text" name="q" placeholder="name or barcode">
+        
+        
+        
+        <button type="button" onclick="openScanner()">Scan</button>
+        <br><br><br><br><br><br><br>
+        <button type="submit">Search</button>
+        </div>
+    </form>
+ 
+ 
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+<script src="{{ url_for('static', filename='js/scanbrcode2.js') }}"></script>
+</body>
+</html>

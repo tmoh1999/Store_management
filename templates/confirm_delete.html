@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Delete</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+      <style>
+body, html {
+    height: 100%; /* needed for full-page centering */
+    margin: 0;
+}
+
+     body {
+    display: flex;
+    justify-content: center; /* horizontal centering */
+    align-items: center;     /* vertical centering */
+}
+h1{
+font-size:50px
+}
+      </style>
+</head>
+<body>
+	<div class="container2">
+    <h1>Confirm Delete</h1>
+    <p>Are you sure you want to delete <strong>{{ product.name }}</strong>?</p>
+    
+    <form method="POST" action="{{ url_for('remove_product', product_id=product.product_id) }}">
+        <button type="submit">Yes, Delete</button>
+        <a href="{{ url_for('productlist') }}">Cancel</a>
+    </form>
+  </div>
+</body>
+</html>

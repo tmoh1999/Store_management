@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Free Barcode Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+  <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+</head>
+<body>
+  <div class="container2">
+  <h1>Scan Product Barcode</h1>
+
+    
+</div>
+  <div class="container">
+  	
+<div id="scanner"></div>
+
+   
+    
+    	
+
+</div>
+<br><br><br><br>
+  <div class="container2">
+<h1>Detected: <span id="result"></span></h1>
+</div>
+  <script>
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type : "LiveStream",
+        target: document.querySelector('#scanner'),
+        constraints: {
+          facingMode: "environment" // Use back camera on phones,
+        
+        }
+      },
+      decoder: {
+        readers : [
+          "ean_reader", "upc_reader"
+        ]
+      }
+    }, function(err) {
+        if (err) { console.error(err); return }
+        Quagga.start();
+    });
+
+    Quagga.onDetected(data => {
+      console.log(data.codeResult.code);
+      let code = data.codeResult.code;
+      // send code to parent page
+      if (window.opener && !window.opener.closed) {
+        window.opener.setBarcode(code);
+      }
+      window.close(); // close scanner window
+    });
+  </script>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+
+</body>
+</html>

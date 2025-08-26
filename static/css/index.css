@@ -1,0 +1,50 @@
+input,label{
+      padding: 10px;
+      font-size: 50px;
+      margin-right: 10px;
+      
+    }
+input{
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width:400px;
+    }
+ label{
+    margin-left:100px;
+    }
+  
+button,ul,li,p,a{
+font-size:50px;
+}
+a{
+margin-left:100px;
+}
+button{
+	background-color:lightblue;
+}
+.container{
+display:flex;
+justify-content:center;
+}
+.container2 {
+  text-align: center;
+}
+  #scanner {
+    width: 80%;
+    height: 900px;             /* change this to control size */
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #333;
+  }
+
+  /* Force Quagga’s injected video & canvas to match parent */
+  #scanner video,
+  #scanner canvas {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;  /* fills box, may crop */
+  }
+</style>
