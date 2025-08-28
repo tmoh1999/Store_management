@@ -37,9 +37,14 @@
       },
       decoder: {
         readers : [
-          "ean_reader", "upc_reader"
+           "ean_reader",  
+          "ean_8_reader",   
+          "code_128_reader",  
+          "upc_reader",       
+          "upc_e_reader"      
         ]
-      }
+      },
+      locate:true,
     }, function(err) {
         if (err) { console.error(err); return }
         Quagga.start();
@@ -52,6 +57,7 @@
       if (window.opener && !window.opener.closed) {
         window.opener.setBarcode(code);
       }
+      Quagga.stop();
       window.close(); // close scanner window
     });
   </script>

@@ -12,18 +12,28 @@
 <label for="number">Add Product</label>
 <br><br><br><br><br><br>
 <label for="product_name">Name:</label>
- <input id="product_name" placeholder="Product Name">	
+ <input id="product_name" placeholder="Product Name" value="{{product.name if product else '' }}">
  <br><br><br><br><br><br>
-<label for="product_price">Price:</label>
- <input id="product_price" placeholder="Product Price" type="number">	
+<label for="product_purchase_price">Purchase Price:</label>
+ <input id="product_purchase_price" placeholder="Purchase Price" type="number">	
+ <br><br><br><br><br><br>
+ 	
+
+ <label for="product_price">Price:</label>
+ <input id="product_price" placeholder="Product Price" type="number">
+<br><br><br><br><br><br>
+<label for="product_quantity">Quantity:</label>
+ <input id="product_quantity" placeholder="Product Quantity" type="number">
+
+	
  <br><br><br><br><br><br>
  <label for="product_brcode">Barcode:</label>
- <input id="product_brcode" name="barcode" placeholder="Product Barcode" type="number">	
+ <input id="product_brcode" name="barcode" placeholder="Barcode" type="number" value="{{product.barcode if product else '' }}">	
 
-
+     <button type="button" onclick="openScanner()">Scan</button>
     <br><br><br><br><br><br>
      
-     <button type="button" onclick="openScanner()">Scan Br code</button>
+
      <br><br><br><br><br><br>
      <button type="button" onclick="addproduct()">add product</button>
      </div>

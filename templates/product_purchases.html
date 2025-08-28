@@ -13,14 +13,12 @@
     	<caption>Products</caption>
         <tr>
         	<th class="titles">ID</th>
+        <th class="titles">Barcode</th>
             <th class="titles">Name</th>
             <th class="titles">Price</th>
-            <th class="titles">Barcode</th>
+            <th class="titles">purchase_price</th>
             <th class="titles">quantity</th>
-            <th class="titles"></th>
-            <th class="titles"></th>
-            <th class="titles"></th>
-            <th class="titles"></th>
+            <th class="titles">Date</th>
         </tr>
         {% for row in data %}
         <tr>
@@ -29,26 +27,9 @@
             <td>{{ row[2] }}</td>
             <td>{{ row[3] }}</td>
              <td>{{ row[4] }}</td>
-           <td>
-<button onclick="window.open('/product/{{ row[0] }}/addproducts', '_blank', 'width=600,height=400')">
- Add
- </button>
- </td>
- <td>	
-<button onclick="window.open('/product/{{ row[0] }}/viewpurchases', '_blank', 'width=600,height=400')">
- View
- </button>
-</td>
-            <td>
- <button onclick="window.open('/product/{{ row[0] }}/edit', '_blank', 'width=600,height=400')">
- Edit
- </button>
-</td>
-<td>
- <button onclick="window.open('/product/{{ row[0] }}/remove', '_blank', 'width=600,height=400')">
- Rm
- </button>
-</td>
+             <td>{{ row[5] }}</td>
+             <td>{{ row[6] }}</td>
+
         </tr>
         {% endfor %}
     </table>

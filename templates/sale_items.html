@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sale:{{sale.sale_id}} at {{sale.sale_date}}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sale_items.css') }}">
+</head>
+<body>
+   <input id="sale_id" style="display:None;" value="{{sale.sale_id}}">
+    <h1>Sale:{{sale.sale_id}} at {{sale.sale_date}}</h1>
+    <div class="container2">
+    	    <br><br><br><br>
+        <input id="search_q" type="text" style="font-size:80px;width:70%;" name="q" placeholder="name or barcode">
+        
+        <button type="button" style="font-size:80px;" onclick="openScanner()">Scan</button>
+        <br><br><br><br>
+        
+        </div>
+           <br><br>
+           	<div style="text-align:left;margin-bottom:20px;margin-right:40px;">
+   <h1>Total: <span id="total"></span></h1>
+    </div>
+ <div style="text-align:right;margin-bottom:50px;margin-right:40px;">
+  
+<button style="font-size:80px;" onclick="addsaleitems()">add</button>
+  
+  </div>
+ 
+    <div class="container">
+    <table border="1" id="sale_table">
+            <tr>
+            
+            <td> <input id="product_name" placeholder="Name" class="cell-input"></td>
+            <td><input id="product_brcode" name="barcode" placeholder="Barcode" type="number" class="cell-input"></td>
+<td><input id="product_price" placeholder="Price" type="number" class="cell-input" value="0"></td>
+            <td><input id="product_quantity" placeholder="Quantity" type="number" class="cell-input" value="1"></td>           
+        </tr>
+	
+        <tr>
+        	
+            <th class="titles">Name</th>
+            <th class="titles">Barcode</th>
+            <th class="titles">Price</th>
+            <th class="titles">quantity</th>
+        </tr>
+
+    </table>
+   </div>
+  
+ <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+<script src="{{ url_for('static', filename='js/sale_items.js') }}"></script>
+</body>
+</html>

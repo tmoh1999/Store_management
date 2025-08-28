@@ -6,27 +6,26 @@
 
 </head>
 <body>
+<div class="container2">  
+<label >Sales</label>
 
-<form action="/manageproducts">
+
+</div>
+
+
+<form action="/sale/add" method="post">
     <br><br><br><br><br><br>
      <div class="container">
-     <button type="submit">Manage products</button>
-     </div>
-</form>
-<br><br><br><br><br><br><br><br>
-<form action="/managesales">
-    <br><br><br><br><br><br>
-     <div class="container">
-     <button type="submit">Manage sales</button>
+     <button type="submit">add sale</button>
      </div>
 </form>
 
-
+ 
 <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 <script>
   eruda.init();
   console.log("Hello Android!");
 </script>
-
+<script src="{{ url_for('static', filename='js/scanbrcode2.js') }}"></script>
 </body>
 </html>
