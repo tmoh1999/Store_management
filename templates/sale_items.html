@@ -29,8 +29,8 @@
     <table border="1" id="sale_table">
             <tr>
             
-            <td> <input id="product_name" placeholder="Name" class="cell-input"></td>
-            <td><input id="product_brcode" name="barcode" placeholder="Barcode" type="number" class="cell-input"></td>
+            <td> </td>
+            <td></td>
 <td><input id="product_price" placeholder="Price" type="number" class="cell-input" value="0"></td>
             <td><input id="product_quantity" placeholder="Quantity" type="number" class="cell-input" value="1"></td>           
         </tr>
@@ -45,7 +45,12 @@
 
     </table>
    </div>
-  
+   <br><br><br><br>
+        <br><br><br><br>
+  <div class="container2">
+   <button type="button" style="font-size:80px;" onclick="SaveSale()">Save</button>
+   <button type="button" style="font-size:80px;margin-left:100px;" onclick="CancelSale()">Cancel</button>
+   </div>
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 <script>
   eruda.init();

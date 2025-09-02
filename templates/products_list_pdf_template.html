@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Data</title>
+    
+</head>
+<body>
+
+
+
+    <div class="container">
+    <table border="1" width="">
+    	<caption>Products</caption>
+        <tr>
+        	<th class="titles">ID</th>
+            <th class="titles">Name</th>
+<th class="titles">Barcode</th>
+            <th class="titles">Price</th>
+           
+            <th class="titles">quantity</th>
+            </tr>
+            <tr>
+            <td>3</td>
+            <td>1</td>
+            <td>2</td>
+            <td>3</td>
+             <td>4</td>
+           
+        
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row.product_id}}</td>
+            <td>{{ row.name}}</td>
+            <td>{{ row.barcode }}</td>
+            <td>{{ row.current_price }}</td>
+             <td>{{ row.quantity}}</td>
+           
+        </tr>
+        {% endfor %}
+    </table>
+   </div>
+</body>
+</html>

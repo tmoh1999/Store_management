@@ -24,6 +24,11 @@
   <div class="container2">
 <h1>Detected: <span id="result"></span></h1>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
   <script>
     Quagga.init({
       inputStream: {
@@ -31,8 +36,10 @@
         type : "LiveStream",
         target: document.querySelector('#scanner'),
         constraints: {
-          facingMode: "environment" // Use back camera on phones,
-        
+          facingMode: "environment" ,// Use back camera on phones,
+      width: { ideal: 1280 },        // higher resolution
+      height: { ideal: 720 },
+      focusMode: "continuous"        
         }
       },
       decoder: {
@@ -53,19 +60,22 @@
     Quagga.onDetected(data => {
       console.log(data.codeResult.code);
       let code = data.codeResult.code;
-      // send code to parent page
-      if (window.opener && !window.opener.closed) {
-        window.opener.setBarcode(code);
-      }
-      Quagga.stop();
-      window.close(); // close scanner window
-    });
+  if (code && code.length === 13) {
+    console.log("Valid EAN-13:", code);
+
+    // send code to parent page
+    if (window.opener && !window.opener.closed) {
+      window.opener.setBarcode(code);
+    }
+
+    Quagga.stop();
+    window.close(); // close scanner window
+  } else {
+    console.log("Rejected (not EAN-13):", code);
+  }
+  });
   </script>
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>
-  eruda.init();
-  console.log("Hello Android!");
-</script>
+
 
 </body>
 </html>

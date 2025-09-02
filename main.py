@@ -1,8 +1,13 @@
-from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response
+from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file
 import mysql.connector
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
+from openpyxl import load_workbook,Workbook
+from sqlalchemy import desc
+from weasyprint import HTML
+import io
+import os
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:@localhost/store_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -127,10 +132,8 @@ def insertproduct():
 
 @app.route("/productlist",methods=["GET"])
 def productlist():
-	db = get_db(); cursor = db.cursor()
-	cursor.execute("select * from products")
-	results=cursor.fetchall()
-	response = make_response(render_template("products_list.html",data=results))
+	products = Product.query.all()
+	response = make_response(render_template("products_list.html",data=products))
 	response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
 	response.headers["Pragma"] = "no-cache"
 	response.headers["Expires"] = "0"
@@ -154,24 +157,44 @@ def search2():
         (Product.barcode.like(f"%{query}%"))
     ).all()
     print(results)
+    if len(results)==0:
+       return jsonify({
+              "success": False,
+              "results": [],
+              "total":0
+       })
     results_list=[
         {"id": p.product_id, "name": p.name, "barcode": p.barcode, "price": p.current_price}
         for p in results
     ]
-    new_sale_item=SaleItems(sale_id=sale_id,product_id=results[0].product_id,unit_price=results[0].current_price,quantity=1)
-    db2.session.add(new_sale_item)
+    rs=SaleItems.query.filter(SaleItems.sale_id==sale_id,SaleItems.product_id==results[0].product_id).first()
+    if rs:
+    	rs.quantity+=1
+    else:
+        new_sale_item=SaleItems(sale_id=sale_id,product_id=results[0].product_id,unit_price=results[0].current_price,quantity=1)
+        db2.session.add(new_sale_item)
     db2.session.commit()
     
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
-    
+    result_list2=[]
+    for r in results2:
+       print(r.product_id)
+       if r.product_id:
+       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity}
+       else:
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity}    
+           
+       result_list2.append(x)
     print(len(results2))
     total=0
     for st in results2:
     	total+=st.unit_price*st.quantity
     print(total)
+    
     return jsonify({
               "success": True,
-              "results": results_list,
+              "results": result_list2,
               "total":total
     })
 @app.route("/product/<int:product_id>/edit", methods=["GET", "POST"])
@@ -250,18 +273,236 @@ def addsaleitem():
     db2.session.commit()
     print(new_sale_item,new_sale_item.unit_price)
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
-    
+    result_list2=[]
+    for r in results2:
+       print(r.product_id)
+       if r.product_id:
+       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity}
+       else:
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity}    
+           
+       result_list2.append(x)
     print(len(results2))
     total=0
     for st in results2:
     	total+=st.unit_price*st.quantity
     print(total)
+    
     return jsonify({
-            "success": True,
-            "status": "same_item added",
-            "sale_id":new_sale_item.sale_id,
-            "price": new_sale_item.unit_price,
-            "quantity":new_sale_item.quantity,
-             "total":total
-    })    
+              "success": True,
+              "results": result_list2,
+              "total":total
+    })
+@app.route("/sale/update_item", methods=["GET", "POST"])
+def updatesaleitem():
+    db = get_db(); cursor = db.cursor()
+    sale_id=int(request.json["sale_id"])
+    item_id=int(request.json["item_id"])
+    target=request.json["target"]
+    new_value=request.json["new_value"]
+    
+    item=SaleItems.query.filter(SaleItems.sale_id==sale_id,SaleItems.item_id==item_id).first()
+    if item:
+       print(target,item_id)
+       if target=="quantity":
+    	    item.quantity=int(new_value)
+       else:
+        	item.unit_price=float(new_value)
+       db2.session.commit()
+    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+    result_list2=[]
+    for r in results2:
+       if r.product_id:
+       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity}
+       else:
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity}    
+           
+       result_list2.append(x)
+    print(len(results2))
+    total=0
+    for st in results2:
+    	total+=st.unit_price*st.quantity
+    print(total)
+    
+    return jsonify({
+              "success": True,
+              "results": result_list2,
+              "total":total
+    })
+@app.route("/sale/remove", methods=["GET", "POST"])
+def removesale():
+    db = get_db(); cursor = db.cursor()
+    sale_id=int(request.json["sale_id"])
+
+
+    items=SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+    for item in items:
+    	db2.session.delete(item)
+    db2.session.commit()
+    sales = Sales.query.filter(Sales.sale_id==sale_id).all()
+    
+    for r in sales:
+          db2.session.delete(r)
+    db2.session.commit()
+
+    return jsonify({
+              "success": True,
+              "id deleted": sale_id
+    })
+@app.route("/sale/confirm", methods=["GET", "POST"])
+def confirmsale():
+    
+    sale_id=int(request.json["sale_id"])
+
+    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+    result_list2=[]
+    for r in results2:
+       print(r.product_id)
+       if r.product_id:
+            p = Product.query.filter(Product.product_id==r.product_id).first()
+            p.quantity=max(p.quantity-r.quantity,0)
+            product_batches = ProductBatches.query.filter(ProductBatches.product_id == r.product_id).order_by(ProductBatches.date_received).all()
+            g=r.quantity
+            for batch in product_batches:
+                if batch.quantity>=g:
+                   batch.quantity-=g
+                   break
+                else:
+                   g-=batch.quantity
+                   batch.quantity=0
+                print(batch.date_received,batch.quantity)
+    db2.session.commit()
+    return jsonify({
+              "success": True,
+              "id deleted": sale_id
+    })
+
+@app.route("/saleslist",methods=["GET"])
+def saleslist():
+    sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+    retdict=[]
+    for sale in sales:
+    	#nb products
+        items=SaleItems.query.filter(SaleItems.sale_id==sale.sale_id).all()
+        total=0;quantity=0
+        for item in items:
+        	quantity+=item.quantity
+        	total+=item.unit_price*item.quantity
+        x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": quantity}
+        retdict.append(x)
+    response = make_response(render_template("sales_list.html",data=retdict))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+@app.route("/sales/<int:sale_id>/viewsaleitems", methods=["GET", "POST"])
+def view_sales(sale_id):
+    db = get_db(); cursor = db.cursor()
+    cursor.execute("SELECT s.sale_id, s.sale_date,i.product_id,i.unit_price,i.quantity FROM sale_items i INNER JOIN sales s ON i.sale_id = s.sale_id and i.sale_id=%s order by s.sale_date DESC",(sale_id,))
+    results=cursor.fetchall()
+    print(len(results))
+    
+    return render_template("sale_items_history.html",data=results)
+
+
+
+
+@app.route("/product/import", methods=["GET", "POST"])
+def upload_products():
+    if request.method == "POST":
+        file = request.files["file"]
+        if not file:
+            return "No file uploaded", 400
+        
+    
+        # Load the Excel file
+        wb = load_workbook(file)
+        ws = wb.active   # first sheet
+
+        # Skip headers (row 1)
+        for row in ws.iter_rows(min_row=2, values_only=True):
+              print("  ..... ,  ",row)
+              name,barcode,quantity,price,purchase_price=row
+              pd=Product.query.filter(Product.barcode==barcode).first()
+              if pd:
+              	 print("barcode exists")
+              else:
+                   new_prod=Product(name=name,barcode=barcode,quantity=quantity,current_price=price)
+                   db2.session.add(new_prod)
+                   db2.session.commit()
+                   new_prod_batch=ProductBatches(product_id=new_prod.product_id,purchase_price=purchase_price,quantity=quantity)
+                   db2.session.add(new_prod_batch)
+                   db2.session.commit()
+        return """
+    <script>
+        history.go(-2)
+    </script>
+    """
+
+    return render_template("upload.html")
+
+
+@app.route("/product/export", methods=["GET"])
+def export_products():
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Products"
+
+    # Write header row
+    ws.append(["Name", "Barcode", "Quantity", "Price", "Purchase Price"])
+
+    # Fetch all products
+    products = Product.query.all()
+
+    for p in products:
+        # Get latest batch purchase price (or None if no batch exists)
+        batch = ProductBatches.query.filter_by(product_id=p.product_id).order_by(ProductBatches.id.desc()).first()
+        purchase_price = batch.purchase_price if batch else None
+
+        ws.append([p.name, p.barcode, p.quantity, p.current_price, purchase_price])
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="products.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+@app.route("/products.pdf")
+def products_pdf():
+    # 🔹 directly reuse the same query
+    products = Product.query.all()
+ 
+    # render to PDF
+    html = render_template("products_list_pdf_template.html", data=products)
+    print(html)
+    pdf = HTML(string=html,base_url=app.root_path).write_pdf()
+    pdf_bytes = HTML(string=html, base_url=app.root_path).write_pdf()
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="products.pdf"  # filename for the browser
+    )
+@app.route("/testpdf")
+def testpdf():
+    html = """<!DOCTYPE html>
+    <html><body>
+    <h1>Hello PDF</h1>
+    <table border="1">
+        <tr><td>1</td><td>2</td></tr>
+    </table>
+    </body></html>"""
+    pdf = HTML(string=html).write_pdf("test.pdf")
+    return "PDF generated"
 app.run(host="0.0.0.0", port=5000, debug=True)
