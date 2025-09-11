@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Status App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+
+</head>
+<body>
+	 <br><br><br><br><br><br>
+
+<div class="container2">  
+<label for="number">Supplier Infos</label>
+<br><br><br><br><br><br>
+<label for="supplier_name">Name:</label>
+ <input id="supplier_name" placeholder="Name" >
+ <br><br><br><br><br><br>
+<label for="supplier_email">Email:</label>
+ <input id="supplier_email" placeholder="Email" type="email">	
+ <br><br><br><br><br><br>
+ <label for="supplier_phone">Phone:</label>
+ <input id="supplier_phone" placeholder="Phone Number" type="tel">	
+ <br><br><br><br><br><br>
+
+ 
+     <br><br><br><br><br><br>
+     <button type="button" onclick="addsupplier()">add supplier</button>
+     </div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+
+<script src="{{ url_for('static', filename='js/addsupplier.js') }}"></script>
+</body>
+</html>

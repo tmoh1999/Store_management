@@ -1,0 +1,15 @@
+1.manage products:
+*** fix export/import/print product to match database change
+*** add search filters in product list
+
+2.manage sales
+**save total_amount in sale as column
+
+3.manage suppliers:
+
+4.manage purchases:
+add product selection in purchase using
+product_list.html and search
+
+5.all pages
+***override back button in browsers

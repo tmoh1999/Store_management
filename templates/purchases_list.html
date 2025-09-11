@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Data</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_list.css') }}">
+</head>
+<body>
+
+
+
+    <div class="container">
+    <table border="1" width="">
+    	<caption>Purchases</caption>
+        <tr>
+        	<th class="titles">ID</th>
+            <th class="titles">Date</th>
+<th class="titles">Supplier</th>
+            <th class="titles">Total</th>
+            <th class="titles"></th>
+            
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row.purchase_id}}</td>
+            <td>{{ row.purchase_date}}</td>
+            <td>{{ row.supplier_id }}</td>
+            <td>{{ row.total_amount }}</td>
+           <td>
+<button onclick="window.open('/purchase/{{ row.purchase_id }}/additems', '_blank', 'width=600,height=400')">
+ Add
+ </button>
+ 
+<button onclick="window.open('/purchase/{{ row.purchase_id }}/viewitems', '_blank', 'width=600,height=400')">
+ View
+ </button>
+
+ <button onclick="window.open('/purchase/{{ row.purchase_id }}/edit', '_blank', 'width=600,height=400')">
+ Edit
+ </button>
+
+ <button onclick="window.open('/purchase/{{ row.purchase_id }}/remove', '_blank', 'width=600,height=400')">
+ Rm
+ </button>
+</td>
+        </tr>
+        {% endfor %}
+    </table>
+   </div>
+ <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+<script src="{{ url_for('static', filename='js/product_list.js') }}"></script>
+</body>
+</html>

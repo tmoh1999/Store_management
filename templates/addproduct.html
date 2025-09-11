@@ -6,6 +6,12 @@
 
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+
 	 <br><br><br><br><br><br>
 
 <div class="container2">  
@@ -14,19 +20,12 @@
 <label for="product_name">Name:</label>
  <input id="product_name" placeholder="Product Name" value="{{product.name if product else '' }}">
  <br><br><br><br><br><br>
-<label for="product_purchase_price">Purchase Price:</label>
- <input id="product_purchase_price" placeholder="Purchase Price" type="number">	
- <br><br><br><br><br><br>
- 	
+
 
  <label for="product_price">Price:</label>
  <input id="product_price" placeholder="Product Price" type="number">
 <br><br><br><br><br><br>
-<label for="product_quantity">Quantity:</label>
- <input id="product_quantity" placeholder="Product Quantity" type="number">
-
-	
- <br><br><br><br><br><br>
+ 
  <label for="product_brcode">Barcode:</label>
  <input id="product_brcode" name="barcode" placeholder="Barcode" type="number" value="{{product.barcode if product else '' }}">	
 
@@ -39,12 +38,7 @@
      </div>
 
 
-
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>
-  eruda.init();
-  console.log("Hello Android!");
-</script>
+	
 <script src="{{ url_for('static', filename='js/scanbrcode.js') }}"></script>
 <script src="{{ url_for('static', filename='js/addproduct.js') }}"></script>
 </body>

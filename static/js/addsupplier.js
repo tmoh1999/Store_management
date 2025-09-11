@@ -1,15 +1,16 @@
 const $ = id => document.getElementById(id);
 
-function addproduct(){
+function addsupplier(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/insertemptyproduct", {
+      fetch("/suppliers/insert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-               product_name:$("product_name").value,
-               product_price: parseFloat($("product_price").value),
-               product_brcode: $("product_brcode").value
+               supplier_name:$("supplier_name").value,
+               supplier_email:$("supplier_email").value,
+               supplier_phone:$("supplier_phone").value,
+
         })
       })
       .then(r => r.json())

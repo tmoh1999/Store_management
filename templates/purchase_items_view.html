@@ -10,15 +10,15 @@
 
     <div class="container">
     <table border="1" width="">
-    	<caption>Products</caption>
+    	<caption>Purchases</caption>
         <tr>
-        	<th class="titles">ID</th>
-        <th class="titles">Barcode</th>
-            <th class="titles">Name</th>
-            <th class="titles">Price</th>
+        	<th class="titles">Purchase</th>
+        <th class="titles">Date</th>
+            <th class="titles">Supplier</th>
+            <th class="titles">product</th>
             <th class="titles">purchase_price</th>
             <th class="titles">quantity</th>
-            <th class="titles">Date</th>
+            
         </tr>
         {% for row in data %}
         <tr>
@@ -28,7 +28,6 @@
             <td>{{ row[3] }}</td>
              <td>{{ row[4] }}</td>
              <td>{{ row[5] }}</td>
-             <td>{{ row[6] }}</td>
              
 
         </tr>

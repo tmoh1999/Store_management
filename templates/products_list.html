@@ -18,7 +18,7 @@
             <th class="titles">Price</th>
            
             <th class="titles">quantity</th>
-            <th class="titles"></th>
+            <th class="titles" style="{% if not purchase_id %}display:none;{% endif %}" ></th>
             <th class="titles"></th>
             <th class="titles"></th>
             <th class="titles"></th>
@@ -30,7 +30,7 @@
             <td>{{ row.barcode }}</td>
             <td>{{ row.current_price }}</td>
              <td>{{ row.quantity}}</td>
-           <td>
+           <td style="{% if not purchase_id %}display:none;{% endif %}" >
 <button onclick="window.open('/product/{{ row.product_id }}/addproducts', '_blank', 'width=600,height=400')">
  Add
  </button>

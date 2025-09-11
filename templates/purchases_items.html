@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Status App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+
+	 <br><br><br><br><br><br>
+<input id="purchase_id"  style="display:None;" value="{{purchase.purchase_id}}">
+<div class="container2">  
+<label for="number">Add Product</label>
+<br><br><br><br><br><br>
+<label for="product_name">Name:</label>
+ <input id="product_name" placeholder="Product Name" >
+ <br><br><br><br><br><br>
+<label for="product_purchase_price">Purchase Price:</label>
+ <input id="product_purchase_price" placeholder="Purchase Price" type="number">	
+ <br><br><br><br><br><br>
+ 	
+
+ <label for="product_price">Price:</label>
+ <input id="product_price" placeholder="Product Price" type="number">
+<br><br><br><br><br><br>
+<label for="product_quantity">Quantity:</label>
+ <input id="product_quantity" placeholder="Product Quantity" type="number">
+	
+ <br><br><br><br><br><br>
+ <label for="product_brcode">Barcode:</label>
+ <input id="product_brcode" name="barcode" placeholder="Barcode" type="number" >	
+
+     <button type="button" onclick="openScanner()">Scan</button>
+    <br><br><br><br><br><br>
+     
+
+     <br><br><br><br><br><br>
+     <button type="button" onclick="addproduct()">add to cart</button>
+     
+<br><br><br><br><br><br>
+<button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/confirm', '_blank', 'width=600,height=400')">confirm purchase</button>
+<br><br><br>
+<button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/remove', '_blank', 'width=600,height=400')">cancel purchase</button>
+</div>
+
+<script src="{{ url_for('static', filename='js/scanbrcode.js') }}"></script>
+<script src="{{ url_for('static', filename='js/purchase_items.js') }}"></script>
+</body>
+</html>

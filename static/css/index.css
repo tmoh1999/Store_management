@@ -13,7 +13,7 @@ input{
     margin-left:100px;
     }
   
-button,ul,li,p,a{
+button,ul,li,p,a,h1{
 font-size:50px;
 }
 a{
@@ -36,7 +36,15 @@ justify-content:center;
     overflow: hidden;
     border: 2px solid #333;
   }
-
+.number{
+      font-size:70px;
+      background-color: yellow;
+      margin-right:60px;
+      text-align:center;
+      font-weight:bold;
+      
+      
+   }
   /* Force Quagga’s injected video & canvas to match parent */
   #scanner video,
   #scanner canvas {
