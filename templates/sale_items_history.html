@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>View Data</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_list.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sale_items.css') }}">
 </head>
 <body>
 
@@ -10,32 +10,53 @@
 
     <div class="container">
     <table border="1" width="">
-    	<caption>Sale Items</caption>
+    	<caption>sale:{{data[0][1]}} items</caption>
         <tr>
-        	<th class="titles">sale_id</th>
+        	
         <th class="titles">Date</th>
         <th class="titles">product_id</th>
             
             <th class="titles">Price</th>
+            <th class="titles">description</th>
             <th class="titles">quantity</th>
 
         </tr>
         {% for row in data %}
         <tr>
-            <td>{{ row[0] }}</td>
-            <td>{{ row[1] }}</td>
+            
             <td>{{ row[2] }}</td>
             <td>{{ row[3] }}</td>
-            <td>{{ row[4] }}</td>
-
+            <td><input   id="price_{{ row[0] }}" type="number" class="cell-input" value="{{ row[4] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','price',this.value)"></td>
+            <td><input   id="description_{{ row[0] }}"  class="cell-input" value="{{ row[6] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','description',this.value)"></td>
+            <td><input  id="quantity_{{ row[0] }}" type="number" class="cell-input" value="{{ row[5] }}" onchange="updateSaleItem('{{row[1]}}','{{row[0]}}','quantity',this.value)"></td>
         </tr>
         {% endfor %}
     </table>
    </div>
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>
+ <script>
   eruda.init();
   console.log("Hello Android!");
+</script>
+<script>
+  function updateSaleItem(sale_id,item_id,casek,val){
+          console.log(sale_id+item_id+casek+val);
+        fetch("/sale/update_item", {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({ 
+               sale_id:sale_id,
+               item_id:item_id,
+               new_value:val,
+               target:casek             
+            })
+      })
+      .then(r => r.json())
+      .then(data => {
+       });
+
+   }
+
 </script>
 <script src="{{ url_for('static', filename='js/product_list.js') }}"></script>
 </body>

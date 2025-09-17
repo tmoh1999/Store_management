@@ -1,15 +1,19 @@
 1.manage products:
-*** fix export/import/print product to match database change
 *** add search filters in product list
 
 2.manage sales
-**save total_amount in sale as column
+**add sales and items to database 
+only when confirmed or addstatus
+** make it possible to affect 
+product to saleitem
 
 3.manage suppliers:
 
 4.manage purchases:
-add product selection in purchase using
+**add product selection in purchase using
 product_list.html and search
+**add purchase and items to database 
+only when confirmed or addstatus
 
 5.all pages
 ***override back button in browsers

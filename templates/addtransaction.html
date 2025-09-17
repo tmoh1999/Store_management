@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Status App</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+</script>
+<br><br><br><br><br><br>
+	 
+
+<div class="container2">  
+<label for="number">Add Transaction</label>
+<br><br><br><br><br><br>
+<label for="transaction_type">type:</label>
+ <select class="number" id="transaction_type" name="transaction_type" style="margin:0px;background-color:lightblue;" onchange="updatelist()">
+          	<option>startmoney</option>
+              <option>withdraw</option>
+              <option>expense</option>
+ </select>
+ <br><br><br><br><br><br>
+ <label for="transaction_amount">amount:</label>
+ <input id="transaction_amount" placeholder="Amount" type="number">
+<br><br><br><br><br><br>
+      <label for="transaction_date">Date:</label>
+     <input type="date" id="transaction_date" name="transaction_date">
+ 
+     <br><br><br><br><br><br>
+     <button type="button" onclick="addtransaction()">add transaction</button>
+     </div>
+
+
+
+
+<script src="{{ url_for('static', filename='js/addtransaction.js') }}"></script>
+</body>
+</html>

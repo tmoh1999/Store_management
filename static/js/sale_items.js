@@ -43,7 +43,7 @@ fetch("/sale/update_item", {
       .then(r => r.json())
       .then(data => {
       	              //for future responses from back end
-                       $("total").textContent=data["total"]
+                       $("total").textContent=data["total"];
   CreateSalesItemList(data);
        });
 }
@@ -66,14 +66,18 @@ function addsaleitems(){
         body: JSON.stringify({ 
         	   sale_id:$("sale_id").value,
                price: parseFloat($("product_price").value),
-               quantity: $("product_quantity").value
+               quantity: $("product_quantity").value,
+               description: $("product_description").value
         })
       })
       .then(r => r.json())
       .then(data => {
       	              //for future responses from back end
-                       $("total").textContent=data["total"]
+                       $("total").textContent=data["total"];
   CreateSalesItemList(data);
+  $("product_price").value="";
+    $("product_quantity").value="1";
+  $("product_description").value="";
        });
 }
 function SaveSale(){
@@ -128,9 +132,20 @@ for (let i=0;i<data["results"].length;i++){
                   let cell2 = row.insertCell(1);
                   let cell3 = row.insertCell(2);
                   let cell4 = row.insertCell(3);
+                  let cell5 = row.insertCell(4);
+                  
   // set content
-  cell1.innerHTML = data["results"][i]["item_id"] // auto ID (row number)
-  cell2.innerHTML = data["results"][i]["barcode"];
+  cell1.innerHTML = data["results"][i]["name"] // auto ID (row number)
+  cell2.innerHTML = data["results"][i]["barcode"]
+let input4 = document.createElement("input");
+  
+  input4.value = data["results"][i]["description"];
+  input4.min = 0;
+  input4.id="description-"+data["results"][i]["item_id"]
+  input4.classList.add("cell-input");
+  input4.style.background="lightblue";
+  input4.addEventListener("change",handleEdit);
+cell3.appendChild(input4);
 let input1 = document.createElement("input");
   input1.type = "number";
   input1.value = data["results"][i]["price"];
@@ -139,7 +154,7 @@ let input1 = document.createElement("input");
   input1.classList.add("cell-input");
   input1.style.background="lightblue";
   input1.addEventListener("change",handleEdit);
-cell3.appendChild(input1);
+cell4.appendChild(input1);
 let input2 = document.createElement("input");
   input2.type = "number";
   input2.value = data["results"][i]["quantity"];
@@ -148,7 +163,7 @@ let input2 = document.createElement("input");
   input2.classList.add("cell-input");
   input2.style.background="lightblue";
   input2.addEventListener("change",handleEdit);
-  cell4.appendChild(input2);
+  cell5.appendChild(input2);
   }
-  
+ $("product_price").focus();
 }

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file
 import mysql.connector
-from datetime import datetime
+from datetime import datetime,date
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
 from openpyxl import load_workbook,Workbook
@@ -9,6 +9,7 @@ from weasyprint import HTML,CSS
 import io
 import os
 import webbrowser
+
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:@localhost/store_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -64,6 +65,7 @@ class Sales(db2.Model):
     __tablename__ = "sales"
     sale_id = db2.Column(db2.Integer, primary_key=True)
     sale_date = db2.Column(db2.DateTime(timezone=True), server_default=func.now())
+    total_amount = db2.Column(db2.Float)
     def __repr__(self):
         return f"<Sale {self.sale_id}>"
 
@@ -73,7 +75,9 @@ class SaleItems(db2.Model):
     sale_id = db2.Column(db2.Integer)
     product_id = db2.Column(db2.Integer)
     quantity=db2.Column(db2.Integer)
+    description = db2.Column(db2.String(255))
     unit_price = db2.Column(db2.Float)
+    
     def __repr__(self):
         return f"<SaleItem {self.item_id}>"
 class Suppliers(db2.Model):
@@ -90,7 +94,22 @@ def get_db():
     return mysql.connector.connect(
         host="localhost", user="root", password="", database="store_db"
     )
+class Transactions(db2.Model):
+    __tablename__ = "transactions"
 
+    id = db2.Column(db2.Integer, primary_key=True)
+    date = db2.Column(db2.DateTime(timezone=True), server_default=func.now())
+    type = db2.Column(db2.String(50))  # "start", "sale", "withdraw", "expense", etc.
+    amount = db2.Column(db2.Float, nullable=False)
+    sale_id = db2.Column(db2.Integer, db2.ForeignKey("sales.sale_id"), nullable=True)
+    purchase_id = db2.Column(db2.Integer, db2.ForeignKey("purchases.purchase_id"), nullable=True)
+    note = db2.Column(db2.String(255))
+
+    def __repr__(self):
+        return f"<Transaction {self.type} {self.amount}>"
+with app.app_context():
+    db2.create_all()   # ✅ Creates all tables if they don't exist
+    print("Tables created successfully!")
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -114,7 +133,7 @@ def addproducts(product_id):
 
 @app.route("/insertproduct", methods=["POST"])
 def insertproduct():
-    db = get_db(); cursor = db.cursor()
+    
     product_price = float(request.json["product_price"])
     product_purchase_price = float(request.json["product_purchase_price"])
     
@@ -130,8 +149,9 @@ def insertproduct():
         print(product.quantity)
         product.current_price=product_price
         db2.session.commit()
-        cursor.execute("INSERT INTO product_batches(product_id,quantity,purchase_price) VALUES (%s,%s,%s)", (product.product_id,product_quantity,product_purchase_price,))
-        db.commit()
+        batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity=product_quantity)
+        db2.session.add(batch)
+        db2.session.commit()
         purchase=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity=product_quantity)
         db2.session.add(purchase)
         db2.session.commit()
@@ -154,13 +174,15 @@ def insertproduct():
          print(new_product.product_id)
          product = Product.query.filter_by(barcode=product_brcode).first()
          #print(product,product.product_id,product.name)        
-         cursor.execute("INSERT INTO product_batches(product_id,quantity,purchase_price) VALUES (%s,%s,%s)", (product.product_id,product_quantity,product_purchase_price,))
+         batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity=product_quantity)
+         db2.session.add(batch)
+         db2.session.commit()
          #print(product,product.product_id)        
          purchase=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity=product_quantity)
          db2.session.add(purchase)
          db2.session.commit()
          
-         db.commit()
+         
          return jsonify({
               "success": True,
               "status": "product added",
@@ -171,7 +193,7 @@ def insertproduct():
     
 @app.route("/insertemptyproduct", methods=["POST"])
 def insertemptyproduct():
-    db = get_db(); cursor = db.cursor()
+    
     product_price = float(request.json["product_price"])
     product_name=request.json["product_name"]
     product_brcode=request.json["product_brcode"]
@@ -336,12 +358,12 @@ order by pu.purchase_date DESC
 #####Sales
 @app.route("/managesales",methods=["GET"])
 def managesales():
-    db = get_db(); cursor = db.cursor()
+    
     return render_template("managesales.html")
 
 @app.route("/sale/add",methods=["POST"])
 def addsale():
-    db = get_db(); cursor = db.cursor()
+    
     new_sale=Sales()
     db2.session.add(new_sale)
     db2.session.commit()
@@ -349,11 +371,12 @@ def addsale():
     return render_template("sale_items.html",sale=new_sale)
 @app.route("/sale/add_item", methods=["GET", "POST"])
 def addsaleitem():
-    db = get_db(); cursor = db.cursor()
+    
     sale_id=int(request.json["sale_id"])
     price=float(request.json["price"])
     quantity=int(request.json["quantity"])
-    new_sale_item=SaleItems(sale_id=sale_id,unit_price=price,quantity=quantity)
+    description=request.json["description"]
+    new_sale_item=SaleItems(sale_id=sale_id,unit_price=price,quantity=quantity,description=description)
     db2.session.add(new_sale_item)
     db2.session.commit()
     print(new_sale_item,new_sale_item.unit_price)
@@ -363,9 +386,9 @@ def addsaleitem():
        print(r.product_id)
        if r.product_id:
        	p = Product.query.filter(Product.product_id==r.product_id).first()
-       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity}
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity,"description":r.description}
        else:
-           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity}    
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity,"description":r.description}    
            
        result_list2.append(x)
     print(len(results2))
@@ -381,7 +404,7 @@ def addsaleitem():
     })
 @app.route("/sale/update_item", methods=["GET", "POST"])
 def updatesaleitem():
-    db = get_db(); cursor = db.cursor()
+    
     sale_id=int(request.json["sale_id"])
     item_id=int(request.json["item_id"])
     target=request.json["target"]
@@ -392,25 +415,30 @@ def updatesaleitem():
        print(target,item_id)
        if target=="quantity":
     	    item.quantity=int(new_value)
-       else:
+       elif target=="price":
         	item.unit_price=float(new_value)
+       else:
+            item.description=new_value
        db2.session.commit()
+    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
+    transaction=Transactions.query.filter(Transactions.sale_id==sale_id).first()
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     result_list2=[]
+    total=0
     for r in results2:
+       total+=r.quantity*r.unit_price
        if r.product_id:
        	p = Product.query.filter(Product.product_id==r.product_id).first()
-       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity}
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity,"description":r.description}
        else:
-           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity}    
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity,"description":r.description}    
            
        result_list2.append(x)
+    sale.total_amount=total
+    db2.session.commit()
     print(len(results2))
-    total=0
-    for st in results2:
-    	total+=st.unit_price*st.quantity
-    print(total)
-    
+    transaction.amount=total;
+    db2.session.commit()
     return jsonify({
               "success": True,
               "results": result_list2,
@@ -418,7 +446,7 @@ def updatesaleitem():
     })
 @app.route("/sale/remove", methods=["GET", "POST"])
 def removesale():
-    db = get_db(); cursor = db.cursor()
+    
     sale_id=int(request.json["sale_id"])
 
 
@@ -427,14 +455,18 @@ def removesale():
     	db2.session.delete(item)
     db2.session.commit()
     sales = Sales.query.filter(Sales.sale_id==sale_id).all()
-    
+    transactions=Transactions.query.filter(Transactions.sale_id==sale_id).all()
+    for t in transactions:
+          db2.session.delete(t)     
+    db2.session.commit()
     for r in sales:
           db2.session.delete(r)
     db2.session.commit()
+    
 
     return jsonify({
               "success": True,
-              "id deleted": sale_id
+              "sale deleted": sale_id
     })
 @app.route("/sale/confirm", methods=["GET", "POST"])
 def confirmsale():
@@ -443,9 +475,12 @@ def confirmsale():
 
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     result_list2=[]
+    tot=0
     for r in results2:
+       tot+=r.unit_price*r.quantity
        print(r.product_id)
        if r.product_id:
+            
             p = Product.query.filter(Product.product_id==r.product_id).first()
             p.quantity=max(p.quantity-r.quantity,0)
             product_batches = ProductBatches.query.filter(ProductBatches.product_id == r.product_id).order_by(ProductBatches.date_received).all()
@@ -458,15 +493,26 @@ def confirmsale():
                    g-=batch.quantity
                    batch.quantity=0
                 print(batch.date_received,batch.quantity)
+    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
+    sale.total_amount=tot
     db2.session.commit()
+    transaction=Transactions(sale_id=sale_id,type="sale",amount=tot)
+    db2.session.add(transaction)
+    db2.session.commit()
+    print("sale:",sale.sale_id,"tptal_amm:",sale.total_amount,tot)
+    
     return jsonify({
               "success": True,
               "id deleted": sale_id
     })
 
-@app.route("/saleslist",methods=["GET"])
-def saleslist():
-    sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+@app.route("/saleslist/<string:filt>",methods=["GET"])
+def saleslist(filt):
+    if filt=="ALL":
+       sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+    if filt=="Today":
+       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+    print(date.today())
     retdict=[]
     for sale in sales:
     	#nb products
@@ -475,17 +521,49 @@ def saleslist():
         for item in items:
         	quantity+=item.quantity
         	total+=item.unit_price*item.quantity
-        x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": quantity}
+        x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": quantity,  "total_amount": sale.total_amount}
         retdict.append(x)
     response = make_response(render_template("sales_list.html",data=retdict))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
+@app.route("/saleslist/update",methods=["POST"])
+def saleslistupdate():
+    filt=request.json["filter"]
+    if filt=="ALL":
+       sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+    elif filt=="Today":
+       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+    else:
+        sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+        
+        l=filt.split('-')
+        
+        year=int(l[0])
+        month=int(l[1])
+        day=int(l[2])
+        xdate=date(year,month,day)
+        
+        sales = Sales.query.filter(func.date(Sales.sale_date) == xdate).order_by(desc(Sales.sale_date)).all()
+    retdict=[]
+    for sale in sales:
+    	#nb products
+        items=SaleItems.query.filter(SaleItems.sale_id==sale.sale_id).all()
+        total=0;quantity=0
+        for item in items:
+        	quantity+=item.quantity
+        	total+=item.unit_price*item.quantity
+        x={"sale_id":sale.sale_id , "sale_date": sale.sale_date, "total": total,  "quantity": quantity,  "total_amount": sale.total_amount}
+        retdict.append(x)
+    return jsonify({
+              "success": True,
+              "results": retdict
+     })
 @app.route("/sales/<int:sale_id>/viewsaleitems", methods=["GET", "POST"])
 def view_sales(sale_id):
     db = get_db(); cursor = db.cursor()
-    cursor.execute("SELECT s.sale_id, s.sale_date,i.product_id,i.unit_price,i.quantity FROM sale_items i INNER JOIN sales s ON i.sale_id = s.sale_id where i.sale_id=%s order by s.sale_date DESC",(sale_id,))
+    cursor.execute("SELECT i.item_id,s.sale_id, s.sale_date,i.product_id,i.unit_price,i.quantity,i.description FROM sale_items i INNER JOIN sales s ON i.sale_id = s.sale_id where i.sale_id=%s order by s.sale_date DESC",(sale_id,))
     results=cursor.fetchall()
     print(len(results))
     
@@ -605,11 +683,11 @@ def products_pdf():
 ##suppliers
 @app.route("/managesuppliers",methods=["GET"])
 def managesuppliers():
-    db = get_db(); cursor = db.cursor()
+    
     return render_template("manage_suppliers.html")
 @app.route("/suppliers/add",methods=["GET"])
 def addsupplier():
-    db = get_db(); cursor = db.cursor()
+    
     return render_template("addsuplier.html")
 @app.route("/suppliers/insert", methods=["POST"])
 def insertsupplier():
@@ -720,11 +798,15 @@ def remove_purchase(purchase_id):
     print("purchase to delete:",purchase.purchase_id)
     if request.method == "POST":
         if purchase:
+            transaction=Transactions.query.filter(Transactions.purchase_id==purchase_id).first()
             purchase_items = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
             for item in purchase_items:
             	db2.session.delete(item)
+            if transaction:
+                db2.session.delete(transaction)
             db2.session.commit()
             db2.session.delete(purchase)
+            
             db2.session.commit()
         return render_template("managepurchases.html")
     return render_template("confirm_delete_purchase.html", purchase=purchase)
@@ -739,6 +821,8 @@ def save_purchase(purchase_id):
         for item in purchase_items:
            total+=item.purchase_price*item.quantity
         purchase.total_amount=total
+        transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=total)
+        db2.session.add(transaction)
         db2.session.commit()
     return render_template("managepurchases.html")
 @app.route("/purchaseslist",methods=["GET"])
@@ -756,4 +840,122 @@ def view_items(purchase_id):
     results=cursor.fetchall()
     print(len(results))
     return render_template("purchase_items_view.html",data=results)
+###transactions
+@app.route("/managetransactions",methods=["GET"])
+def managetransactions():
+    return render_template("manage_transactions.html")
+@app.route("/transaction/new",methods=["GET"])
+def newtransaction():
+    return render_template("addtransaction.html")
+@app.route("/transaction/add",methods=["POST"])
+def addtransaction():
+    transaction_type = request.json["transaction_type"]
+    transaction_amount = float(request.json["transaction_amount"])
+    transaction_date = request.json["transaction_date"]
+    
+    if transaction_date:
+        l=transaction_date.split('-')
+        year,month,day=int(l[0]),int(l[1]),int(l[2])
+        print()
+        print(transaction_date.split('-')[0])
+        xd=datetime(year,month,day)
+        transaction=Transactions(type=transaction_type,amount=transaction_amount,date=xd)
+        
+    else:
+        transaction=Transactions(type=transaction_type,amount=transaction_amount)
+    db2.session.add(transaction)
+    db2.session.commit()
+    
+    return jsonify({
+              "success": True,
+              "transaction added": transaction.id,
+              "amount":transaction.amount,
+               "type":transaction.type
+    })
+    return render_template("addtransaction.html")
+@app.route("/transaction/<int:transaction_id>/remove", methods=["GET", "POST"])
+def remove_transaction(transaction_id):
+    transaction = Transactions.query.get(transaction_id)
+    if request.method == "POST":
+        db2.session.delete(transaction)
+        db2.session.commit()
+        return """
+    <script>
+        // Close current window
+        // Optional: redirect parent window if opened as popup
+        if (window.opener) {
+             window.opener.location.reload() ;
+        }
+        window.close();
+    </script>
+         """
+    return render_template("confirm_delete_transaction.html",transaction=transaction)
+        
+@app.route("/transactions/list/<string:filt>",methods=["GET"])
+def transactionslist(filt):
+    if filt=="Today":
+       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today()).order_by(desc(Transactions.date)).all()
+    else:
+       transactions=Transactions.query.order_by(desc(Transactions.date)).all()
+    print(date.today())
+    retdict=[]
+    balance=0
+    for tr in transactions:
+        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": tr.amount}
+        if tr.type=="withdraw" or tr.type=="expense" or tr.type=="purchase":
+        	balance-=tr.amount
+        else:
+        	balance+=tr.amount
+        retdict.append(x)
+    response = make_response(render_template("transactions_list.html",data=retdict,balance=balance))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+@app.route("/transactions/list/update",methods=["POST"])
+def transactionslistupdate():
+    filt=request.json["filter"]
+    print("filt",filt)
+    if filt=="Today":
+    	
+       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today()).order_by(desc(Transactions.date)).all()
+    else:
+        
+        
+        l=filt.split('-')
+        
+        year=int(l[0])
+        month=int(l[1])
+        day=int(l[2])
+        xdate=date(year,month,day)
+        print("xdate",xdate)
+        transactions = Transactions.query.filter(func.date(Transactions.date) == xdate).order_by(desc(Transactions.date)).all()
+    retdict=[]
+    balance=0
+    for tr in transactions:
+        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": tr.amount}
+        if tr.type=="withdraw" or tr.type=="expense" or tr.type=="purchase":
+        	balance-=tr.amount
+        else:
+        	balance+=tr.amount
+        retdict.append(x)
+    return jsonify({
+              "success": True,
+              "results": retdict,
+              "balance":balance
+     })
+@app.route("/test",methods=["POST","GET"])
+def test():
+    sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date))
+    for sale in sales:
+        transaction=Transactions.query.filter(Transactions.sale_id==sale.sale_id).first()
+        if not transaction:
+            print(sale.sale_id)
+    x=date(2025,5,13)
+    xt= datetime.combine(x, datetime.min.time())
+    print("xdate:,,",xt)
+    return jsonify({
+              "success": True,
+              "test": "worked"	        
+     })
 app.run(host="0.0.0.0", port=5000, debug=True)

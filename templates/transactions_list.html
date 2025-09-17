@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Data</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_list.css') }}">
+</head>
+<body>
+
+
+
+    <div class="container2">
+    	<input id="date_input" placeholder="Choose Date"  type="date" onchange="updatelist(this.value)" >
+    	<br><br><br>
+    <table border="1" width="" id="transactions_table">
+    	<caption id="caption_balance">Transactions:  {{balance}}</caption>
+        
+        <tr>
+        	<th class="titles">ID</th>
+            <th class="titles">Date</th>
+            <th class="titles">Type</th>
+            <th class="titles">Amount</th>
+            <th class="titles"></th>
+        </tr>
+        {% for row in data %}
+        <tr>
+            <td>{{ row["id"] }}</td>
+            <td>{{ row["date"] }}</td>
+            <td>{{ row["type"] }}</td>
+            <td>{{ row["amount"] }}</td>
+<td>
+ <button onclick="window.open('/transaction/{{ row["id"]  }}/remove', '_blank', 'width=600,height=400')">
+ Remove
+ </button>           
+
+        </tr>
+        {% endfor %}
+    </table>
+   </div>
+ 
+ <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+  
+ </script>
+ 
+
+<script src="{{ url_for('static', filename='js/transactions_list.js') }}"></script>
+</body>
+</html>
