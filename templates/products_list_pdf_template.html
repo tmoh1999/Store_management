@@ -4,41 +4,38 @@
     <title>View Data</title>
     
 </head>
-<body>
+<body class="bg-white">
 
 
 
-    <div class="container">
-    <table >
-    	<caption>Products</caption>
-        <tr>
-        	<th class="titles">ID</th>
-            <th class="titles">Name</th>
-<th class="titles">Barcode</th>
-            <th class="titles">Price</th>
+    <div class="container py-4">
+    	<h2 class="mb-4">Products</h2>
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle">
+    	       <thead class="table-primary text-center">
+                    <tr>
+                    	<th class="titles">ID</th>
+                      <th class="titles">Name</th>
+                     <th class="titles">Barcode</th>
+                        <th class="titles">Price</th>
            
-            <th class="titles">quantity</th>
-            </tr>
-            <tr>
-            <td>3</td>
-            <td>1</td>
-            <td>2</td>
-            <td>3</td>
-             <td>4</td>
-           
-        
-        </tr>
+                       <th class="titles">quantity</th>
+                   </tr>
+               </thead>
+        <tbody class="text-center">
         {% for row in data %}
         <tr>
             <td>{{ row.product_id}}</td>
             <td>{{ row.name}}</td>
             <td>{{ row.barcode }}</td>
             <td>{{ row.current_price }}</td>
-             <td>{{ row.quantity}}</td>
+             <td>{{ row.quantity_float}}</td>
            
         </tr>
         {% endfor %}
+        </tbody>
     </table>
+   </div>
    </div>
 </body>
 </html>

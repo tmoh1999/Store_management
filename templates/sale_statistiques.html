@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>View Data</title>
+   
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+
+
+    <div class="container my-5 p-4 bg-white rounded shadow">
+    	<div class="mb-3 d-flex align-items-center flex-column gap-2 justify-content-center">
+    	<div class="d-flex gap-2 ">
+    	<label for="date_input_start" class="form-label mb-0 fw-bold text-secondary">Start:</label>
+    	<input id="date_input_start"  placeholder="Choose Date"  class="form-control border-primary text-center fw-semibold" type="date" onchange="updatelist2()" >
+    	
+    	<label for="date_input_end" class="form-label mb-0 fw-bold text-secondary" >End:</label>
+    	<input id="date_input_end" placeholder="Choose Date"  class="form-control border-primary text-center fw-semibold" type="date" onchange="updatelist2()" >
+    	</div>
+        
+   </div>
+   </div>
+   <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle" id="sales_stat_table">
+    	
+    	<thead class="table-primary text-center">
+    	
+    
+    
+        <tr>
+            <th class="titles">Date</th>
+            <th class="titles">N.Sales</th>
+            <th class="titles">N.Items</th>
+            <th class="titles">Total Amount</th>
+            
+            
+        </tr>
+        </thead>
+        <tbody class="text-center">
+        {% for row in data %}
+        <tr>
+            
+            <td>{{ row["date"]}}</td>
+            <td>{{ row["nbsales"] }}</td>
+           
+            <td>{{ row["nbitems"] }}</td>
+            <td>{{ row["total"] }}</td>
+            
+        </tr>
+        {% endfor %}
+    </tbody>
+    </table>
+   </div>
+ 
+ <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>
+  eruda.init();
+  console.log("Hello Android!");
+  
+ </script>
+<script>
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date_input_start').value = today;
+  document.getElementById('date_input_end').value = today;
+</script>
+
+<script src="{{ url_for('static', filename='js/sale_statistiques.js') }}"></script>
+</body>
+</html>

@@ -44,7 +44,8 @@ fetch("/sale/update_item", {
       .then(data => {
       	              //for future responses from back end
                        $("total").textContent=data["total"];
-  CreateSalesItemList(data);
+CreateSalesItemList(data);
+  
        });
 }
     // called by scanner page after detection

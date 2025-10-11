@@ -43,11 +43,12 @@
      <button type="button" onclick="addproduct()">add to cart</button>
      
 <br><br><br><br><br><br>
+{% if not pcase %}
 <button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/confirm', '_blank', 'width=600,height=400')">confirm purchase</button>
 <br><br><br>
 <button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/remove', '_blank', 'width=600,height=400')">cancel purchase</button>
 </div>
-
+{%endif%}
 <script src="{{ url_for('static', filename='js/scanbrcode.js') }}"></script>
 <script src="{{ url_for('static', filename='js/purchase_items.js') }}"></script>
 </body>

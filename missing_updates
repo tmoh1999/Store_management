@@ -17,3 +17,7 @@ only when confirmed or addstatus
 
 5.all pages
 ***override back button in browsers
+
+6.database:
+*** migrate sqlalchemey
+*** treat all delete cases

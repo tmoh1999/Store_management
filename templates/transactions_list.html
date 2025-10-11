@@ -1,49 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>View Data</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/product_list.css') }}">
+    <meta charset="UTF-8">
+    <title>View Transactions</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
+
+<div class="container py-4">
+	
+    <h2 id="caption_balance" >Transactions: {{ balance }}</h2>
+<form action="/transaction/new" class="text-end" >
+    
+       
+     <button type="submit" class="btn btn-primary me-1">new transaction</button>
+     
+
+</div>
+    <div class="mb-3 d-flex align-items-center gap-2 justify-content-center">
+    <label for="date_input" class="form-label mb-0 fw-bold text-secondary">Choose Date:</label>
+    <input id="date_input" type="date" 
+           class="form-control border-primary text-center fw-semibold" 
+           style="max-width: 200px; background-color: #f8f9fa;" 
+           onchange="updatelist(this.value)">
+</div>
 
 
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-striped table-hover align-middle" id="transactions_table">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th class="sticky-col bg-dark">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr>
+                    <td>{{ row["id"] }}</td>
+                    <td>{{ row["date"] }}</td>
+                    <td>{{ row["type"] }}</td>
+                    <td>{{ row["amount"] }}</td>
+                    <td class="sticky-col">
+                        <button class="btn btn-sm btn-danger"
+                            onclick="window.open('/transaction/{{ row["id"] }}/remove', '_blank', 'width=600,height=400')">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-    <div class="container2">
-    	<input id="date_input" placeholder="Choose Date"  type="date" onchange="updatelist(this.value)" >
-    	<br><br><br>
-    <table border="1" width="" id="transactions_table">
-    	<caption id="caption_balance">Transactions:  {{balance}}</caption>
-        
-        <tr>
-        	<th class="titles">ID</th>
-            <th class="titles">Date</th>
-            <th class="titles">Type</th>
-            <th class="titles">Amount</th>
-            <th class="titles"></th>
-        </tr>
-        {% for row in data %}
-        <tr>
-            <td>{{ row["id"] }}</td>
-            <td>{{ row["date"] }}</td>
-            <td>{{ row["type"] }}</td>
-            <td>{{ row["amount"] }}</td>
-<td>
- <button onclick="window.open('/transaction/{{ row["id"]  }}/remove', '_blank', 'width=600,height=400')">
- Remove
- </button>           
+<style>
+.table-responsive {
+    overflow-x: auto;
+    position: relative;
+}
 
-        </tr>
-        {% endfor %}
-    </table>
-   </div>
- 
- <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+.sticky-col {
+    position: sticky;
+    right: 0;
+    background: #fff;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+thead .sticky-col {
+    background: #212529;
+    color: #fff;
+}
+</style>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Optional debugging tool -->
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init(); console.log("Hello Android!");</script>
+
 <script>
-  eruda.init();
-  console.log("Hello Android!");
-  
- </script>
- 
+  // Set date input to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date_input').value = today;
+</script>
 
 <script src="{{ url_for('static', filename='js/transactions_list.js') }}"></script>
 </body>

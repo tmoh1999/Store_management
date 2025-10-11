@@ -43,10 +43,17 @@ padding:10px;
 
 border: 10px solid black;
 }
-input,label{
+input{
       padding: 10px;
       font-size: 40px;
       margin-right: 10px;
+    }
+    label{
+      padding: 10px;
+      font-size: 60px;
+      margin-right: 10px;
+      font-weight:bold;
+      
     }
 input{
       border: 1px solid #ccc;
@@ -108,7 +115,7 @@ margin-bottom:10px;
     box-sizing: border-box;
     border-radius: 6px;
   }
-  #date_input{
+  .date_input{
 background-color:lightblue;
 text-align:center;
 font-size:60px;

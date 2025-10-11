@@ -2,36 +2,51 @@
 <html>
 <head>
     <title>View Data</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/sale_items.css') }}">
+    <!--<meta name="viewport" content="width=device-width, initial-scale=1">-->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light">
 
-
-
-    <div class="container">
-    <table border="1" width="">
-    	<caption>sale:{{data[0][1]}} items</caption>
+<div class="container py-5 border">
+<h1>sale:{{data[0][1]}} items</h1>
+    <div class="table-responsive">
+    <table class="table table-striped table-hover align-middle" >
+    	<thead class="table-dark text-center">
         <tr>
         	
         <th class="titles">Date</th>
         <th class="titles">product_id</th>
             
             <th class="titles">Price</th>
+            <th class="titles">Profit</th>
             <th class="titles">description</th>
             <th class="titles">quantity</th>
 
         </tr>
+        </thead>
+        <tbody class="text-center align-middle">
         {% for row in data %}
         <tr>
             
             <td>{{ row[2] }}</td>
-            <td>{{ row[3] }}</td>
-            <td><input   id="price_{{ row[0] }}" type="number" class="cell-input" value="{{ row[4] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','price',this.value)"></td>
-            <td><input   id="description_{{ row[0] }}"  class="cell-input" value="{{ row[6] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','description',this.value)"></td>
-            <td><input  id="quantity_{{ row[0] }}" type="number" class="cell-input" value="{{ row[5] }}" onchange="updateSaleItem('{{row[1]}}','{{row[0]}}','quantity',this.value)"></td>
+            <td>
+            	<button class="btn btn-primary" onclick="window.open('/product/select/sale_items/{{ row[0] }}', '_blank', 'width=600,height=400')">
+ +
+ </button>
+              <br>
+            {% if row[3] %}
+  {{ row[3] }}
+{% endif %}
+            </td>
+            <td><input   id="price_{{ row[0] }}" style="width:auto;min-width:80px;max-width:110px;"type="number" class="form-control text-center d-inline-block" value="{{ row[4] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','price',this.value)"></td>
+            <td><input   id="profit_{{ row[0] }}" style="width:auto;min-width:80px;max-width:110px;"type="number" class="form-control text-center d-inline-block" value="{{ row[7] }}" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','profit',this.value)"></td>
+            <td><textarea   id="description_{{ row[0] }}"  class="form-control text-center  d-inline-block" rows="1"  style="width:auto;min-width:120px;max-width:150px;" onchange="updateSaleItem('{{row[1]}}','{{ row[0] }}','description',this.value)">{{ row[6] }}</textarea></td>
+            <td><input  id="quantity_{{ row[0] }}" type="number" class="form-control text-center  d-inline-block" style="width:auto;min-width:80px;max-width:110px;" value="{{ row[5] }}" onchange="updateSaleItem('{{row[1]}}','{{row[0]}}','quantity',this.value)"></td>
         </tr>
         {% endfor %}
+        </tbody>
     </table>
+   </div>
    </div>
  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
  <script>
@@ -53,11 +68,19 @@
       })
       .then(r => r.json())
       .then(data => {
+      	console.log(casek);
+      if (casek=="description"){
+      idq="description_"+item_id;
+      element=document.getElementById(idq);
+      element.style.height = "auto";     
+    // reset
+  element.style.height = element.scrollHeight + "px"; // adjust to fit
+  }
        });
 
    }
 
 </script>
-<script src="{{ url_for('static', filename='js/product_list.js') }}"></script>
+
 </body>
 </html>

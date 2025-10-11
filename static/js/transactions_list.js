@@ -1,9 +1,9 @@
 function CreateTransactionsList(data){
 
-let table = document.getElementById("transactions_table");
+let table = document.getElementById("transactions_table").getElementsByTagName("tbody")[0];
 console.log(table.rows.length)
-while (table.rows.length > 1) {
-  table.deleteRow(1);
+while (table.rows.length > 0) {
+  table.deleteRow(0);
 }
 console.log(table.rows.length);
 
@@ -26,6 +26,7 @@ for (let i=0;i<data["results"].length;i++){
   let button = document.createElement("button");
 let transId=data["results"][i]["id"]
 button.textContent = "Remove";
+button.className="btn btn-sm btn-danger";
 button.addEventListener("click", function () {
   window.open(`/transaction/${transId}/remove`, '_blank', 'width=600,height=400');
 });

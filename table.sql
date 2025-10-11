@@ -37,10 +37,10 @@ LEFT JOIN information_schema.KEY_COLUMN_USAGE AS kcu
     ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
     AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
     AND tc.TABLE_NAME = kcu.TABLE_NAME
-WHERE tc.TABLE_NAME = 'product_batches'
+WHERE tc.TABLE_NAME = 'purchase_items'
   AND tc.TABLE_SCHEMA = 'store_db';
   
-  alter table product_batches drop constraint product_batches_ibfk_2;
+  alter table sale_items drop constraint sale_items_ibfk_2;
   
   
   SELECT 
@@ -52,6 +52,16 @@ FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = 'store_db'
   AND TABLE_NAME = 'purchases'
   AND IS_NULLABLE = 'NO';
+
+
+ALTER TABLE purchase_items
+DROP FOREIGN KEY purchase_items_ibfk_2;
   
-  
-  
+ ALTER TABLE purchase_items
+ADD CONSTRAINT purchase_items_ibfk_2
+FOREIGN KEY (product_id)
+ REFERENCES products(product_id)
+ON DELETE SET NULL;
+
+ALTER TABLE purchase_items 
+MODIFY product_id INT(11) NULL;
