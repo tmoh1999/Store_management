@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 function addproduct(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/insertproduct", {
+      fetch("/insertproductpurchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -37,4 +37,10 @@ function SavePurchase(){
                        
                        window.history.back();
        });
+}
+function selectResponse(x){
+          console.log(x["results"]);
+          document.getElementById("product_name").value=x["results"]["name"]
+         document.getElementById("product_brcode").value=x["results"]["barcode"]
+         document.getElementById("product_price").value=x["results"]["price"]
 }

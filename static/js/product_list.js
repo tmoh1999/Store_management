@@ -5,12 +5,13 @@ function CreateSalesItemList(data) {
     while (table.rows.length > 0) {
         table.deleteRow(0); // Keep totals row and header row
     }
-
+   
     
 
     data["results"].forEach(item => {
         let row = table.insertRow(-1);
-        
+        let dmode=document.getElementById("display_mode").value;
+        console.log("dmode"+dmode);
         // Insert cells
         let cell1 = row.insertCell(0);
         let cell2 = row.insertCell(1);
@@ -34,7 +35,31 @@ function CreateSalesItemList(data) {
         cell6.style.position = "sticky";
         cell6.style.right = "0";
         
-
+        if (dmode==1){
+        	
+        	// View button
+        let btnAdd = document.createElement("button");
+        
+        btnAdd.className = "btn btn-sm btn-success";
+        btnAdd.textContent = "Add";
+        btnAdd.addEventListener("click", () => {
+            window.open(`/product/${item.id}/addproducts`, '_blank', 'width=600,height=400');
+        });
+       cell6.appendChild(btnAdd);
+        } else if (dmode==3){
+        	
+        let type=document.getElementById("display_type").value;
+        let row_id=document.getElementById("display_row_id").value;
+        let btnSelect= document.createElement("button");
+        btnSelect.className = "btn btn-sm btn-success";
+        
+        btnSelect.textContent = "Select";
+        btnSelect.addEventListener("click", () => {
+            selectclick(item.id,row_id,type);
+        });
+        cell6.appendChild(btnSelect);
+        } else{
+       
         // View button
         let btnView = document.createElement("button");
         btnView.className = "btn btn-sm btn-info";
@@ -62,7 +87,7 @@ function CreateSalesItemList(data) {
         cell6.appendChild(btnView);
         cell6.appendChild(btnEdit);
         cell6.appendChild(btnRemove);
-        
+        }
     });
 
     
@@ -77,13 +102,14 @@ function updatelist(){
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
         	   search_q:document.getElementById("search_q").value,
+               products_filter:document.getElementById("products_filter").value,
         })
       })
       .then(r => r.json())
       .then(data => {
-      	 console.log(data["results"])
+      	 
           if (data["results"].length>=0){
-          	console.log(data["results"])
+          	console.log(document.getElementById("products_filter").value)
   CreateSalesItemList(data);
   
   }
@@ -100,9 +126,16 @@ function selectclick(product_id, row_id, type){
     .then(r => r.json())
     .then(data => {
         console.log(JSON.stringify(data));
-        if (window.opener && !window.opener.closed) {
-            window.opener.location.reload();
+       if (window.opener && !window.opener.closed) {
+       	 console.log(window.opener.location.pathname)
+            window.opener.selectResponse(data);
         }
         window.close();
     });
+}
+
+function printProducts(){
+let query=document.getElementById("search_q").value;
+let filt=document.getElementById("products_filter").value;
+window.open(`/products.pdf/${ filt }/${ query }`, '_blank', 'width=600,height=400')
 }

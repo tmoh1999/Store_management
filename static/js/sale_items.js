@@ -48,6 +48,7 @@ CreateSalesItemList(data);
   
        });
 }
+
     // called by scanner page after detection
 function setBarcode(value) {
 	console.log(19999999);
@@ -136,8 +137,22 @@ for (let i=0;i<data["results"].length;i++){
                   let cell5 = row.insertCell(4);
                   
   // set content
+  if (data["results"][i]["name"]=="" && data["results"][i]["barcode"]==""){
+  	
+   let button = document.createElement("button");
+   button.innerHTML="+";
+   button.classList.add="btn btn-primary"
+   let item_id=data["results"][i]["item_id"]
+   button.addEventListener("click",function () {
+   
+  window.open(`/product/select/sale_items_before/${item_id}`, '_blank', 'width=600,height=400');
+});
+cell1.appendChild(button);
+  }else{
   cell1.innerHTML = data["results"][i]["name"] // auto ID (row number)
+  }
   cell2.innerHTML = data["results"][i]["barcode"]
+  
 let input4 = document.createElement("input");
   
   input4.value = data["results"][i]["description"];
@@ -168,3 +183,22 @@ let input2 = document.createElement("input");
   }
  $("product_price").focus();
 }
+
+	function selectResponse(x){
+          
+          console.log(555);
+          fetch("/sale/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+        	   sale_id:$("sale_id").value,
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+      	              //for future responses from back end
+                       $("total").textContent=data["total"];
+CreateSalesItemList(data);
+  
+       });
+    }

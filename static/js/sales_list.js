@@ -124,5 +124,6 @@ function removeSale(sale_id){
       .then(data => {
       	 
           alert(JSON.stringify(data));
+          window.location.reload();
        });
 }

@@ -109,6 +109,7 @@ class Transactions(db2.Model):
 
     def __repr__(self):
         return f"<Transaction {self.type} {self.amount}>"
+
 with app.app_context():
     db2.create_all()   # ✅ Creates all tables if they don't exist
     print("Tables created successfully!")
@@ -118,6 +119,11 @@ def getDate(filt):
         month=int(l[1])
         day=int(l[2])
         return date(year,month,day)
+def roundFive(mon):
+    if mon%5!=0:
+        res=(mon//5+1)*5
+        return res
+    return mon
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -139,8 +145,8 @@ def addproducts(product_id):
           product = Product.query.get_or_404(product_id)
     return render_template("addproduct.html",product=product)
 
-@app.route("/insertproduct", methods=["POST"])
-def insertproduct():
+@app.route("/insertproductpurchase", methods=["POST"])
+def insertproductpurchase():
     
     product_price = float(request.json["product_price"])
     product_purchase_price = float(request.json["product_purchase_price"])
@@ -150,20 +156,19 @@ def insertproduct():
     product_name=request.json["product_name"]
     product_brcode=request.json["product_brcode"]
     purchase_id=request.json["purchase_id"]
+    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
     if product_brcode=="":
        product_brcode=datetime.now().strftime("%Y%m%d%H%M%S%f")
     product = Product.query.filter_by(barcode=product_brcode).first()
     if product:
-    	
-        print(product.quantity_float,product_quantity)
-        product.quantity_float=product.quantity_float+product_quantity
-        print(product.quantity_float)
+        if purchase and purchase.status:
+              product.quantity_float=product.quantity_float+product_quantity
         product.current_price=product_price
         db2.session.commit()
-        batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
-        db2.session.add(batch)
-        db2.session.commit()
-        purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
+        ##batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
+        ##db2.session.add(batch)
+        ##db2.session.commit()
+        
         if  purchase:
                purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
                db2.session.add(purchase_item)
@@ -180,7 +185,7 @@ def insertproduct():
          
          
          
-         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode,quantity_float=product_quantity)
+         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode)
          product = Product.query.filter_by(barcode=product_brcode).first()
          #print(product)
          db2.session.add(new_product)
@@ -188,11 +193,11 @@ def insertproduct():
          print(new_product.product_id)
          product = Product.query.filter_by(barcode=product_brcode).first()
          #print(product,product.product_id,product.name)        
-         batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
-         db2.session.add(batch)
-         db2.session.commit()
+         ##batch=ProductBatches(product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
+         ##db2.session.add(batch)
+         ##db2.session.commit()
          #print(product,product.product_id)
-         purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
+         #purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
          if  purchase:
                purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
                db2.session.add(purchase_item)
@@ -217,6 +222,7 @@ def insertemptyproduct():
     if product_brcode=="":
        product_brcode=datetime.now().strftime("%Y%m%d%H%M%S%f")
     product = Product.query.filter_by(barcode=product_brcode).first()
+    
     if product:
         return jsonify({
             "success": False,
@@ -250,10 +256,16 @@ def productlist():
     products = Product.query.order_by(desc(Product.product_id)).all()
     if request.method=="POST":
         query = request.json["search_q"]
+        products_filter = int(request.json["products_filter"])
         if query:
             products = Product.query.filter(
             (Product.name.like(f"%{query}%")) |
             (Product.barcode.like(f"%{query}%"))).order_by(desc(Product.product_id)).all()
+        
+        if products_filter==1:
+           products = Product.query.filter(Product.quantity_float==0.0).order_by(desc(Product.product_id)).all()
+        elif products_filter==2:
+        	products = Product.query.filter(Product.quantity_float>0.0).order_by(desc(Product.product_id)).all()
         results_list=[
         {"id": p.product_id, "name": p.name, "barcode": p.barcode, "price": p.current_price,"quantity":p.quantity_float} for p in products]
         return jsonify({
@@ -417,15 +429,28 @@ def selectedproduct():
     print("       product_id:",product_id)
     product = Product.query.filter(Product.product_id==product_id).first()
     if product:
-        if type=="sale_items":
+        if "sale_items" in type:
             item=SaleItems.query.filter(SaleItems.item_id==row_id).first()
             if item:
                item.product_id=product.product_id
                item.description=product.name
-               product.quantity_float-=item.quantity_float
+               print("            product.quantity_float:",product.quantity_float)
+               print("            item.quantity_float:",item.quantity_float)
+               if type!="sale_items_before":
+                    product.quantity_float-=item.quantity_float
+               print("            product.quantity_float:",product.quantity_float)
                purchase_item=PurchaseItems.query.filter(PurchaseItems.product_id==item.product_id).order_by(desc(PurchaseItems.purchase_item_id)).first()
                if purchase_item:
                   item.profit=item.unit_price-purchase_item.purchase_price
+        elif type=="purchase_items":
+            purchase=Purchases.query.filter(Purchases.purchase_id==row_id).first()
+            if purchase:
+            	print("&&&&&&&&&&&")
+            	x={"product_id": product.product_id, "name": product.name, "barcode": product.barcode, "price": product.current_price}
+            	return jsonify({
+                 "success": True,
+                 "results":x
+                })			
         db2.session.commit()
     return jsonify({
               "success": True
@@ -517,6 +542,37 @@ def updatesaleitem():
     if transaction:
        transaction.amount=total;
     db2.session.commit()
+    return jsonify({
+              "success": True,
+              "results": result_list2,
+              "total":total
+    })
+@app.route("/sale/refresh", methods=["GET", "POST"])
+def resfreshsaleitems():
+    
+    sale_id=int(request.json["sale_id"])
+    
+    
+    
+    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
+    transaction=Transactions.query.filter(Transactions.sale_id==sale_id).first()
+    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+    result_list2=[]
+    total=0
+    for r in results2:
+       total+=r.quantity_float*r.unit_price
+       if r.product_id:
+       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
+       else:
+           x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}    
+           
+       result_list2.append(x)
+    
+    
+    
+    
+    
     return jsonify({
               "success": True,
               "results": result_list2,
@@ -822,11 +878,21 @@ def export_products():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-
-@app.route("/products.pdf")
-def products_pdf():
+@app.route("/products.pdf/<string:filt>/", defaults={"query": ""})
+@app.route("/products.pdf/<string:filt>/<string:query>/")
+def products_pdf(filt,query=""):
     # 🔹 directly reuse the same query
-    products = Product.query.all()
+    products = Product.query.order_by(desc(Product.product_id)).all()
+    if query:
+        products = Product.query.filter(
+          (Product.name.like(f"%{query}%")) |
+          (Product.barcode.like(f"%{query}%"))).order_by(desc(Product.product_id)).all()
+    products_filte=int(filt)      
+    if products_filte==1:
+           products = Product.query.filter(Product.quantity_float==0.0).order_by(desc(Product.product_id)).all()
+    elif products_filte==2:
+           products = Product.query.filter(Product.quantity_float>0.0).order_by(desc(Product.product_id)).all()
+    
  
     # render to PDF
     html = render_template("products_list_pdf_template.html", data=products)
@@ -1001,6 +1067,13 @@ def complete_purchase(purchase_id):
         purchase.status=1
         transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=purchase.total_amount)
         db2.session.add(transaction)
+        items=PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase.purchase_id).all()
+        for item in items:
+            product=Product.query.filter(Product.product_id==item.product_id).first()
+            if product:
+                product.quantity_float+=item.quantity_float
+                batch=ProductBatches(product_id=product.product_id,purchase_price=item.purchase_price,quantity_float=product.quantity_float)
+                db2.session.add(batch)
         db2.session.commit()
     return render_template("managepurchases.html")
 @app.route("/purchaseslist",methods=["GET"])
@@ -1143,11 +1216,11 @@ def transactionslist(filt):
     retdict=[]
     balance=0
     for tr in transactions:
-        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": tr.amount}
+        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": roundFive(tr.amount)}
         if tr.type=="withdraw" or tr.type=="expense" or tr.type=="purchase"  or tr.type=="forgive":
-        	balance-=tr.amount
+        	balance-=roundFive(tr.amount)
         else:
-        	balance+=tr.amount
+        	balance+=roundFive(tr.amount)
         retdict.append(x)
     response = make_response(render_template("transactions_list.html",data=retdict,balance=balance))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -1176,11 +1249,11 @@ def transactionslistupdate():
     retdict=[]
     balance=0
     for tr in transactions:
-        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": tr.amount}
+        x={"id":tr.id , "date": tr.date, "type": tr.type,  "amount": roundFive(tr.amount)}
         if tr.type=="withdraw" or tr.type=="expense" or tr.type=="purchase" or tr.type=="forgive":
-        	balance-=tr.amount
+        	balance-=roundFive(tr.amount)
         else:
-        	balance+=tr.amount
+        	balance+=roundFive(tr.amount)
         retdict.append(x)
     return jsonify({
               "success": True,
