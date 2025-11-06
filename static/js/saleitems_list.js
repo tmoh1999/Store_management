@@ -19,17 +19,18 @@ for (let i=0;i<data["results"].length;i++){
                   let cell5 = row.insertCell(4);
                   let cell6 = row.insertCell(5);
                   let cell7 = row.insertCell(6);
-                  
+                  let cell8 = row.insertCell(7);
                   
   
   // set content
   cell1.innerHTML = data["results"][i]["sale_id"] // auto ID (row number)
   cell2.innerHTML = data["results"][i]["date"];
   cell3.innerHTML = data["results"][i]["unit_price"];
-  cell4.innerHTML = parseFloat(data["results"][i]["profit"])*parseFloat(data["results"][i]["quantity"]);
-  cell5.innerHTML = data["results"][i]["quantity"];
-  cell6.innerHTML = data["results"][i]["total"];
-  cell7.innerHTML = data["results"][i]["description"];
+  cell4.innerHTML = data["results"][i]["product"];
+  cell5.innerHTML = parseFloat(data["results"][i]["profit"])*parseFloat(data["results"][i]["quantity"]);
+  cell6.innerHTML = data["results"][i]["quantity"];
+  cell7.innerHTML = data["results"][i]["total"];
+  cell8.innerHTML = data["results"][i]["description"];
   console.log("profit:"+data["results"][i]["profit"])
   tot+=parseFloat(data["results"][i]["total"]);
 tot2+=parseFloat(data["results"][i]["quantity"]);

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Products</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+</head>
+<body class="bg-light text-center d-flex justify-content-center align-items-center vh-100 bg-danger ">
+	
+	<div class="container py-4">
+
+<form method="POST">
+	<div class="d-flex flex-column align-items-center gap-3">
+  <h2>Login</h2>
+  <input name="username" class="form-control border-primary text-center fw-semibold" placeholder="Username" required>
+  <input type="password" class="form-control border-primary text-center fw-semibold" name="password" placeholder="Password" required>
+
+  <button type="submit" class="btn btn-sm btn-primary w-75 shadow-lg rounded-pill fs-2 ">Login</button>
+  
+
+  <p>No account? <a href="/register">Register</a></p>
+    </div>
+</form>
+
+</div>
+
+</body>
+</html>

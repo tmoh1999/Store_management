@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file
+from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file,session,flash
 import mysql.connector
 from datetime import datetime,date,timedelta
 from flask_sqlalchemy import SQLAlchemy
@@ -6,16 +6,79 @@ from sqlalchemy.sql import func
 from openpyxl import load_workbook,Workbook
 from sqlalchemy import desc
 from weasyprint import HTML,CSS
+from werkzeug.security import generate_password_hash, check_password_hash
 import io
 import os
 import webbrowser
-
+import subprocess
 app = Flask(__name__)
+app.secret_key = "mohmath"
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:@localhost/store_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db2 = SQLAlchemy(app)
+def isLogin():
+    print(session)
+    
+class User(db2.Model):
+    id = db2.Column(db2.Integer, primary_key=True)
+    username = db2.Column(db2.String(100), unique=True, nullable=False)
+    password = db2.Column(db2.String(200), nullable=False)
 
+@app.route("/")
+def home():
+    if "user" in session:
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash("Username already exists!")
+            return redirect(url_for("register"))
+
+        hashed_pw = generate_password_hash(password)
+        new_user = User(username=username, password=hashed_pw)
+        db2.session.add(new_user)
+        db2.session.commit()
+        flash("Registration successful! Please log in.")
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password, password):
+            session["user"] = username
+            session["user_id"] = user.id
+            flash("Login successful!")
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Invalid username or password")
+            return redirect(url_for("login"))
+
+    return render_template("login.html")
+
+@app.route("/dashboard")
+def dashboard():
+    if "user" not in session: return redirect(url_for("login"))
+    return render_template("index.html", username=session["user"])
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    flash("You have been logged out.")
+    return redirect(url_for("login"))
 class Product(db2.Model):
     __tablename__ = "products"
 
@@ -25,6 +88,7 @@ class Product(db2.Model):
     current_price = db2.Column(db2.Float)
     quantity = db2.Column(db2.Integer, server_default="0")
     quantity_float=db2.Column(db2.Float, server_default="0.0")
+    user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
     def __repr__(self):
         return f"<Product {self.name}>"
 
@@ -47,6 +111,7 @@ class Purchases(db2.Model):
     total_amount = db2.Column(db2.Float, server_default="0.0")
     status = db2.Column(db2.Boolean, server_default="0")
     description = db2.Column(db2.String(250))
+    user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
     def __repr__(self):
         return f"<Purchases {self.purchase_id}>"
 
@@ -59,6 +124,7 @@ class PurchaseItems(db2.Model):
     purchase_price = db2.Column(db2.Float)
     quantity = db2.Column(db2.Integer, server_default="0")
     quantity_float=db2.Column(db2.Float, server_default="0.0")
+    remain_quantity=db2.Column(db2.Float, server_default="0.0")
     def __repr__(self):
         return f"<PurchasesItems {self.purchase_item_id}>"
 class Sales(db2.Model):
@@ -66,6 +132,7 @@ class Sales(db2.Model):
     sale_id = db2.Column(db2.Integer, primary_key=True)
     sale_date = db2.Column(db2.DateTime(timezone=True), server_default=func.now())
     total_amount = db2.Column(db2.Float)
+    user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
     def __repr__(self):
         return f"<Sale {self.sale_id}>"
 
@@ -88,9 +155,14 @@ class Suppliers(db2.Model):
     name = db2.Column(db2.String(64))
     email = db2.Column(db2.String(64))
     phone = db2.Column(db2.String(128))
+    user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
     def __repr__(self):
         return f"<Supplier {self.name}>"  
-
+class SalePurchaseUsage(db2.Model):
+    id = db2.Column(db2.Integer, primary_key=True)
+    item_id = db2.Column(db2.Integer, db2.ForeignKey('sale_items.item_id'))
+    purchase_item_id = db2.Column(db2.Integer, db2.ForeignKey('purchase_items.purchase_item_id'))
+    quantity_used = db2.Column(db2.Float, server_default="0.0")
 def get_db():
     return mysql.connector.connect(
         host="localhost", user="root", password="", database="store_db"
@@ -106,6 +178,7 @@ class Transactions(db2.Model):
     sale_id = db2.Column(db2.Integer, db2.ForeignKey("sales.sale_id"), nullable=True)
     purchase_id = db2.Column(db2.Integer, db2.ForeignKey("purchases.purchase_id"), nullable=True)
     note = db2.Column(db2.String(255))
+    user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
 
     def __repr__(self):
         return f"<Transaction {self.type} {self.amount}>"
@@ -124,20 +197,21 @@ def roundFive(mon):
         res=(mon//5+1)*5
         return res
     return mon
-@app.route("/")
-def home():
-    return render_template("index.html")
+    
+
  
 @app.route("/scanner",methods=["GET"])
 def scanner():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("scanbr.html")
 @app.route("/manageproducts",methods=["GET"])
 def manageproducts():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("manageproducts.html")
 
 @app.route("/product/<int:product_id>/addproducts",methods=["GET", "POST"])
 def addproducts(product_id):
- 
+    if "user" not in session: return redirect(url_for("login"))
     product=None
     print(product_id)
     if product_id>0:
@@ -147,7 +221,7 @@ def addproducts(product_id):
 
 @app.route("/insertproductpurchase", methods=["POST"])
 def insertproductpurchase():
-    
+    if "user" not in session: return redirect(url_for("login"))
     product_price = float(request.json["product_price"])
     product_purchase_price = float(request.json["product_purchase_price"])
     
@@ -170,13 +244,13 @@ def insertproductpurchase():
         ##db2.session.commit()
         
         if  purchase:
-               purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
+               purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity,remain_quantity=product_quantity)
                db2.session.add(purchase_item)
                purchase.total_amount+=product_purchase_price*product_quantity
         db2.session.commit()
         return jsonify({
-            "success": False,
-            "status": "product barcode exists",
+            "success": True,
+            "status": "product updated",
             "product_name": product_name,
             "product_price": product_price,
             "product_brcode":product_brcode
@@ -185,7 +259,7 @@ def insertproductpurchase():
          
          
          
-         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode)
+         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode,user_id=int(session["user_id"]))
          product = Product.query.filter_by(barcode=product_brcode).first()
          #print(product)
          db2.session.add(new_product)
@@ -199,7 +273,7 @@ def insertproductpurchase():
          #print(product,product.product_id)
          #purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
          if  purchase:
-               purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity)
+               purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=product_purchase_price,quantity_float=product_quantity,remain_quantity=product_quantity)
                db2.session.add(purchase_item)
                purchase.total_amount+=product_purchase_price*product_quantity
          db2.session.commit()
@@ -215,7 +289,7 @@ def insertproductpurchase():
     
 @app.route("/insertemptyproduct", methods=["POST"])
 def insertemptyproduct():
-    
+    if "user" not in session: return redirect(url_for("login"))
     product_price = float(request.json["product_price"])
     product_name=request.json["product_name"]
     product_brcode=request.json["product_brcode"]
@@ -225,8 +299,8 @@ def insertemptyproduct():
     
     if product:
         return jsonify({
-            "success": False,
-            "status": "product barcode exists",
+            "success": True,
+            "status": "product updated",
             "product_name": product_name,
             "product_price": product_price,
             "product_brcode":product_brcode
@@ -235,7 +309,7 @@ def insertemptyproduct():
          
          
          
-         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode)
+         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode,user_id=int(session["user_id"]))
          product = Product.query.filter_by(barcode=product_brcode).first()
          #print(product)
          db2.session.add(new_product)
@@ -253,19 +327,20 @@ def insertemptyproduct():
 
 @app.route("/productlist",methods=["GET","POST"])
 def productlist():
-    products = Product.query.order_by(desc(Product.product_id)).all()
+    if "user" not in session: return redirect(url_for("login"))
+    products = Product.query.filter(Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
     if request.method=="POST":
         query = request.json["search_q"]
         products_filter = int(request.json["products_filter"])
         if query:
             products = Product.query.filter(
-            (Product.name.like(f"%{query}%")) |
-            (Product.barcode.like(f"%{query}%"))).order_by(desc(Product.product_id)).all()
+            ((Product.name.like(f"%{query}%")) |
+            (Product.barcode.like(f"%{query}%"))) & (Product.user_id==int(session["user_id"]))).order_by(desc(Product.product_id)).all()
         
         if products_filter==1:
-           products = Product.query.filter(Product.quantity_float==0.0).order_by(desc(Product.product_id)).all()
+           products = Product.query.filter(Product.quantity_float==0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
         elif products_filter==2:
-        	products = Product.query.filter(Product.quantity_float>0.0).order_by(desc(Product.product_id)).all()
+        	products = Product.query.filter(Product.quantity_float>0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
         results_list=[
         {"id": p.product_id, "name": p.name, "barcode": p.barcode, "price": p.current_price,"quantity":p.quantity_float} for p in products]
         return jsonify({
@@ -279,21 +354,23 @@ def productlist():
     return response
 @app.route("/search")
 def search():
+    if "user" not in session: return redirect(url_for("login"))
     query = request.args.get("q", "")
 
     results = Product.query.filter(
-        (Product.name.like(f"%{query}%")) |
-        (Product.barcode.like(f"%{query}%"))
+        ((Product.name.like(f"%{query}%")) |
+        (Product.barcode.like(f"%{query}%"))) &(Product.user_id==int(session["user_id"]))
     ).all()
     print(results)
     return render_template("search_product.html", results=results, query=query)
 @app.route("/search2",methods=["POST"])
 def search2():
+    if "user" not in session: return redirect(url_for("login"))
     query = request.json["query"]
     sale_id=int(request.json["sale_id"])
     results = Product.query.filter(
-        (Product.name.like(f"%{query}%")) |
-        (Product.barcode.like(f"%{query}%"))
+        ((Product.name.like(f"%{query}%")) |
+        (Product.barcode.like(f"%{query}%"))) &(Product.user_id==int(session["user_id"]))
     ).all()
     print(results)
     if len(results)==0:
@@ -319,7 +396,7 @@ def search2():
     for r in results2:
        print(r.product_id)
        if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
        	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float}
        else:
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float}    
@@ -338,6 +415,7 @@ def search2():
     })
 @app.route("/product/<int:product_id>/edit", methods=["GET", "POST"])
 def edit_product(product_id):
+    if "user" not in session: return redirect(url_for("login"))
     product = Product.query.get_or_404(product_id)
 
     if request.method == "POST":
@@ -358,6 +436,7 @@ def edit_product(product_id):
     return render_template("modifyproduct.html", product=product)
 @app.route("/product/<int:product_id>/remove", methods=["GET", "POST"])
 def remove_product(product_id):
+    if "user" not in session: return redirect(url_for("login"))
     product = Product.query.get(product_id)
     
     if request.method == "POST":
@@ -377,6 +456,7 @@ def remove_product(product_id):
     return render_template("confirm_delete.html", product=product)
 @app.route("/product/<int:product_id>/viewpurchases", methods=["GET", "POST"])
 def view_purchases(product_id):
+    if "user" not in session: return redirect(url_for("login"))
     db = get_db(); cursor = db.cursor()
     cursor.execute("""
 SELECT p.product_id, p.barcode,
@@ -395,6 +475,7 @@ order by pu.purchase_date DESC
     return render_template("product_purchases.html",data=results)
 @app.route("/product/<int:product_id>/viewsales", methods=["GET", "POST"])
 def view_product_sales(product_id):
+    if "user" not in session: return redirect(url_for("login"))
     db = get_db(); cursor = db.cursor()
     cursor.execute("""
 SELECT p.product_id, p.barcode,
@@ -413,14 +494,16 @@ order by it.item_id DESC
     return render_template("product_sales.html",data=results)
 @app.route("/product/select/<string:type>/<int:row_id>", methods=["GET", "POST"])
 def selectproduct(type,row_id):
-	products = Product.query.order_by(desc(Product.product_id)).all()
-	response = make_response(render_template("products_list.html",data=products,mode="select",type=type,row_id=row_id))
-	response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-	response.headers["Pragma"] = "no-cache"
-	response.headers["Expires"] = "0"
-	return response
+    if "user" not in session: return redirect(url_for("login"))
+    products = Product.query.filter(Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
+    response = make_response(render_template("products_list.html",data=products,mode="select",type=type,row_id=row_id))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 @app.route("/product/selected", methods=["GET", "POST"])
 def selectedproduct():
+    if "user" not in session: return redirect(url_for("login"))
     product_id=int(request.json["product_id"])
     row_id=int(request.json["row_id"])
     type=request.json["type"]	
@@ -443,7 +526,7 @@ def selectedproduct():
                if purchase_item:
                   item.profit=item.unit_price-purchase_item.purchase_price
         elif type=="purchase_items":
-            purchase=Purchases.query.filter(Purchases.purchase_id==row_id).first()
+            purchase=Purchases.query.filter(Purchases.purchase_id==row_id,Purchases.user_id==int(session["user_id"])).first()
             if purchase:
             	print("&&&&&&&&&&&")
             	x={"product_id": product.product_id, "name": product.name, "barcode": product.barcode, "price": product.current_price}
@@ -458,20 +541,20 @@ def selectedproduct():
 #####Sales
 @app.route("/managesales",methods=["GET"])
 def managesales():
-    
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("managesales.html")
 
 @app.route("/sale/add",methods=["POST"])
 def addsale():
-    
-    new_sale=Sales()
+    if "user" not in session: return redirect(url_for("login"))
+    new_sale=Sales(user_id=int(session["user_id"]))
     db2.session.add(new_sale)
     db2.session.commit()
     print(new_sale,new_sale.sale_id)
     return render_template("sale_items.html",sale=new_sale)
 @app.route("/sale/add_item", methods=["GET", "POST"])
 def addsaleitem():
-    
+    if "user" not in session: return redirect(url_for("login"))
     sale_id=int(request.json["sale_id"])
     price=float(request.json["price"])
     quantity=float(request.json["quantity"])
@@ -485,7 +568,7 @@ def addsaleitem():
     for r in results2:
        print(r.product_id)
        if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
        	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}
        else:
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}    
@@ -504,7 +587,7 @@ def addsaleitem():
     })
 @app.route("/sale/update_item", methods=["GET", "POST"])
 def updatesaleitem():
-    
+    if "user" not in session: return redirect(url_for("login"))
     sale_id=int(request.json["sale_id"])
     item_id=int(request.json["item_id"])
     target=request.json["target"]
@@ -514,7 +597,11 @@ def updatesaleitem():
     if item:
        print(target,item_id)
        if target=="quantity":
-    	    item.quantity_float=float(new_value)
+          rollBackSaleItem(item_id)
+          item.quantity_float=float(new_value)
+          db2.session.flush()
+          validateSaleItem(item)
+          db2.session.commit()
        elif target=="price":
         	item.unit_price=float(new_value)
        elif target=="profit":
@@ -522,15 +609,15 @@ def updatesaleitem():
        else:
             item.description=new_value
        db2.session.commit()
-    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
-    transaction=Transactions.query.filter(Transactions.sale_id==sale_id).first()
+    sale=Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==int(session["user_id"])).first()
+    transaction=Transactions.query.filter(Transactions.sale_id==sale_id,Transactions.user_id==int(session["user_id"])).first()
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     result_list2=[]
     total=0
     for r in results2:
        total+=r.quantity_float*r.unit_price
        if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
        	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
        else:
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}    
@@ -549,20 +636,20 @@ def updatesaleitem():
     })
 @app.route("/sale/refresh", methods=["GET", "POST"])
 def resfreshsaleitems():
-    
+    if "user" not in session: return redirect(url_for("login"))
     sale_id=int(request.json["sale_id"])
     
     
     
-    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
-    transaction=Transactions.query.filter(Transactions.sale_id==sale_id).first()
+    sale=Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==int(session["user_id"])).first()
+    transaction=Transactions.query.filter(Transactions.sale_id==sale_id,Transactions.user_id==int(session["user_id"])).first()
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     result_list2=[]
     total=0
     for r in results2:
        total+=r.quantity_float*r.unit_price
        if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id).first()
+       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
        	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
        else:
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}    
@@ -580,16 +667,18 @@ def resfreshsaleitems():
     })
 @app.route("/sale/remove", methods=["GET", "POST"])
 def removesale():
-    
+    if "user" not in session: return redirect(url_for("login"))
     sale_id=int(request.json["sale_id"])
 
 
     items=SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     for item in items:
-    	db2.session.delete(item)
+        rollBackSaleItem(item.item_id)
+        db2.session.delete(item)
+        
     db2.session.commit()
-    sales = Sales.query.filter(Sales.sale_id==sale_id).all()
-    transactions=Transactions.query.filter(Transactions.sale_id==sale_id).all()
+    sales = Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==int(session["user_id"])).all()
+    transactions=Transactions.query.filter(Transactions.sale_id==sale_id,Transactions.user_id==int(session["user_id"])).all()
     for t in transactions:
           db2.session.delete(t)     
     db2.session.commit()
@@ -602,9 +691,42 @@ def removesale():
               "success": True,
               "sale deleted": sale_id
     })
+def validateSaleItem(r):
+	
+   if r.product_id:
+       p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
+       p.quantity_float=max(p.quantity_float-r.quantity_float,0)
+       ####for each item save reduced pjrchaseitem 
+       purchase_items = PurchaseItems.query.filter(PurchaseItems.product_id == r.product_id).order_by(PurchaseItems.purchase_item_id).all()
+       g=r.quantity_float
+       for batch in purchase_items:
+           if batch.remain_quantity>=g:
+              batch.remain_quantity-=g
+              sale_purchase_usage=SalePurchaseUsage(item_id=r.item_id,purchase_item_id=batch.purchase_item_id,quantity_used=g)
+              db2.session.add(sale_purchase_usage)
+              break
+           else:
+              g-=batch.remain_quantity
+              sale_purchase_usage=SalePurchaseUsage(item_id=r.item_id,purchase_item_id=batch.purchase_item_id,quantity_used=batch.remain_quantity)
+              db2.session.add(sale_purchase_usage)
+              batch.remain_quantity=0
+       db2.session.commit()
+def rollBackSaleItem(item_id):
+    r=SaleItems.query.filter(SaleItems.item_id==item_id).first()
+    if r and r.product_id:
+        p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
+        p.quantity_float=p.quantity_float+r.quantity_float
+        items_usage=SalePurchaseUsage.query.filter(SalePurchaseUsage.item_id==item_id).all()
+        for u in items_usage:
+              batch=PurchaseItems.query.filter(PurchaseItems.purchase_item_id == u.purchase_item_id).order_by(PurchaseItems.purchase_item_id).first()
+              batch.remain_quantity+=u.quantity_used
+              db2.session.delete(u)
+    db2.session.commit()
+	
+		
 @app.route("/sale/confirm", methods=["GET", "POST"])
 def confirmsale():
-    
+    if "user" not in session: return redirect(url_for("login"))
     sale_id=int(request.json["sale_id"])
 
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
@@ -613,24 +735,13 @@ def confirmsale():
     for r in results2:
        tot+=r.unit_price*r.quantity_float
        print(r.product_id)
-       if r.product_id:
-            
-            p = Product.query.filter(Product.product_id==r.product_id).first()
-            p.quantity_float=max(p.quantity_float-r.quantity_float,0)
-            product_batches = ProductBatches.query.filter(ProductBatches.product_id == r.product_id).order_by(ProductBatches.date_received).all()
-            g=r.quantity_float
-            for batch in product_batches:
-                if batch.quantity_float>=g:
-                   batch.quantity_float-=g
-                   break
-                else:
-                   g-=batch.quantity_float
-                   batch.quantity_float=0
-                print(batch.date_received,batch.quantity_float)
-    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
+       validateSaleItem(r)
+
+                
+    sale=Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==int(session["user_id"])).first()
     sale.total_amount=tot
     db2.session.commit()
-    transaction=Transactions(sale_id=sale_id,type="sale",amount=tot)
+    transaction=Transactions(sale_id=sale_id,type="sale",amount=tot,user_id=int(session["user_id"]))
     db2.session.add(transaction)
     db2.session.commit()
     print("sale:",sale.sale_id,"tptal_amm:",sale.total_amount,tot)
@@ -642,10 +753,11 @@ def confirmsale():
 
 @app.route("/saleslist/<string:filt>",methods=["GET"])
 def saleslist(filt):
+    if "user" not in session: return redirect(url_for("login"))
     if filt=="ALL":
-       sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+       sales=Sales.query.filter(Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     if filt=="Today":
-       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today(),Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     print(date.today())
     retdict=[]
     for sale in sales:
@@ -664,13 +776,14 @@ def saleslist(filt):
     return response
 @app.route("/saleslist/update",methods=["POST"])
 def saleslistupdate():
+    if "user" not in session: return redirect(url_for("login"))
     filt=request.json["filter"]
     if filt=="ALL":
-       sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+       sales=Sales.query.filter(Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     elif filt=="Today":
-       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today(),Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     else:
-        sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+        sales = Sales.query.filter(func.date(Sales.sale_date) == date.today(),Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
         
         l=filt.split('-')
         
@@ -679,7 +792,7 @@ def saleslistupdate():
         day=int(l[2])
         xdate=date(year,month,day)
         
-        sales = Sales.query.filter(func.date(Sales.sale_date) == xdate).order_by(desc(Sales.sale_date)).all()
+        sales = Sales.query.filter(func.date(Sales.sale_date) == xdate,Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     retdict=[]
     for sale in sales:
     	#nb products
@@ -696,6 +809,7 @@ def saleslistupdate():
      })
 @app.route("/sales/<int:sale_id>/viewsaleitems", methods=["GET", "POST"])
 def view_sales(sale_id):
+    if "user" not in session: return redirect(url_for("login"))
     db = get_db(); cursor = db.cursor()
     cursor.execute("SELECT i.item_id,s.sale_id, s.sale_date,i.product_id,i.unit_price,i.quantity_float,i.description,i.profit FROM sale_items i INNER JOIN sales s ON i.sale_id = s.sale_id where i.sale_id=%s order by s.sale_date DESC",(sale_id,))
     results=cursor.fetchall()
@@ -707,10 +821,11 @@ def view_sales(sale_id):
 
 @app.route("/saleitemslist/<string:filt>",methods=["GET"])
 def saleitemslist(filt):
+    if "user" not in session: return redirect(url_for("login"))
     if filt=="ALL":
-       sales=Sales.query.order_by(desc(Sales.sale_date)).all()
+       sales=Sales.query.filter(Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     if filt=="Today":
-       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date)).all()
+       sales = Sales.query.filter(func.date(Sales.sale_date) == date.today(),Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     print(date.today())
     retdict=[]
     for sale in sales:
@@ -719,7 +834,7 @@ def saleitemslist(filt):
         
         for item in items:
             total=item.unit_price*item.quantity_float
-            x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": item.quantity_float,  "unit_price": item.unit_price,"description": item.description,"profit":item.profit}
+            x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": item.quantity_float,  "unit_price": item.unit_price,"description": item.description,"profit":item.profit,"product":item.product_id}
             retdict.append(x)
     response = make_response(render_template("saleitems_list.html",data=retdict))
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -728,13 +843,14 @@ def saleitemslist(filt):
     return response
 @app.route("/saleitemslist/update",methods=["POST"])
 def saleitemslistupdate():
+    if "user" not in session: return redirect(url_for("login"))
     date_start=request.json["date_start"]
     date_end=request.json["date_end"]
     filt2=request.json["filter2"]
     stdate=getDate(date_start)
     endate=getDate(date_end)
         
-    sales = Sales.query.filter(func.date(Sales.sale_date) >= stdate,func.date(Sales.sale_date) <= endate).order_by(desc(Sales.sale_date)).all()
+    sales = Sales.query.filter(func.date(Sales.sale_date) >= stdate,func.date(Sales.sale_date) <= endate,Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
     retdict=[]
     for sale in sales:
     	#nb products
@@ -745,7 +861,7 @@ def saleitemslistupdate():
         for item in items:
             total=item.unit_price*item.quantity_float
             print(item.unit_price)
-            x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": item.quantity_float,  "unit_price": item.unit_price,"description": item.description,"profit":item.profit}
+            x={"sale_id":sale.sale_id , "date": sale.sale_date, "total": total,  "quantity": item.quantity_float,  "unit_price": item.unit_price,"description": item.description,"profit":item.profit,"product":item.product_id}
             retdict.append(x)
     
     return jsonify({
@@ -754,6 +870,7 @@ def saleitemslistupdate():
      })
 @app.route("/sale/statistiques",methods=["POST","GET"])
 def salestatistiques():
+    if "user" not in session: return redirect(url_for("login"))
     print()
     print("method:::::",request.method)
     if request.method=="POST":
@@ -769,7 +886,7 @@ def salestatistiques():
     retdict=[]
     while current<=endate:
        print(current)
-       sales = Sales.query.filter(func.date(Sales.sale_date) == current).order_by(desc(Sales.sale_date)).all()
+       sales = Sales.query.filter(func.date(Sales.sale_date) == current,Sales.user_id==int(session["user_id"])).order_by(desc(Sales.sale_date)).all()
        total=0;nbit=0
        for sale in sales:
           items=SaleItems.query.filter(SaleItems.sale_id==sale.sale_id).all()
@@ -793,6 +910,7 @@ def salestatistiques():
     return response
 @app.route("/product/import", methods=["GET", "POST"])
 def upload_products():
+    if "user" not in session: return redirect(url_for("login"))
     if request.method == "POST":
         file = request.files["file"]
         if not file:
@@ -804,10 +922,10 @@ def upload_products():
         ws = wb.active   # first sheet
         name="Opening_"+datetime.now().strftime("%Y%m%d_%H%M")
         
-        supplier=Suppliers(name=name,email="",phone="")
+        supplier=Suppliers(name=name,email="",phone="",user_id=int(session["user_id"]))
         db2.session.add(supplier)
         db2.session.flush()
-        purchase=Purchases(supplier_id=supplier.supplier_id)
+        purchase=Purchases(supplier_id=supplier.supplier_id,user_id=int(session["user_id"]))
         db2.session.add(purchase)
         db2.session.flush()
         # Skip headers (row 1)
@@ -824,7 +942,7 @@ def upload_products():
                     pd.quantity_float += quantity
                     pd.current_price = price  # if you want latest price
               else:
-                   pd=Product(name=name,barcode=barcode,quantity_float=quantity,current_price=price)
+                   pd=Product(name=name,barcode=barcode,quantity_float=quantity,current_price=price,user_id=int(session["user_id"]))
                    db2.session.add(pd)
                    db2.session.flush()
               total+=quantity*purchase_price
@@ -832,7 +950,7 @@ def upload_products():
               db2.session.add(new_prod_batch)
                   
               
-              new_purchase_item=PurchaseItems(product_id=pd.product_id,purchase_price=purchase_price,purchase_id=purchase.purchase_id,quantity_float=quantity)
+              new_purchase_item=PurchaseItems(product_id=pd.product_id,purchase_price=purchase_price,purchase_id=purchase.purchase_id,quantity_float=quantity,remain_quantity=product_quantity)
               db2.session.add(new_purchase_item)
                   
         purchase.total_amount=total   
@@ -848,6 +966,7 @@ def upload_products():
 
 @app.route("/product/export", methods=["GET"])
 def export_products():
+    if "user" not in session: return redirect(url_for("login"))
     # Create a new Excel workbook
     wb = Workbook()
     ws = wb.active
@@ -857,7 +976,7 @@ def export_products():
     ws.append(["Name", "Barcode", "Quantity", "Price", "Purchase Price"])
 
     # Fetch all products
-    products = Product.query.all()
+    products = Product.query.filter(Product.user_id==int(session["user_id"])).all()
 
     for p in products:
         # Get latest batch purchase price (or None if no batch exists)
@@ -881,17 +1000,19 @@ def export_products():
 @app.route("/products.pdf/<string:filt>/", defaults={"query": ""})
 @app.route("/products.pdf/<string:filt>/<string:query>/")
 def products_pdf(filt,query=""):
+    if "user" not in session: return redirect(url_for("login"))
     # 🔹 directly reuse the same query
-    products = Product.query.order_by(desc(Product.product_id)).all()
+    products = Product.query.filter(Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
     if query:
         products = Product.query.filter(
-          (Product.name.like(f"%{query}%")) |
-          (Product.barcode.like(f"%{query}%"))).order_by(desc(Product.product_id)).all()
+          ((Product.name.like(f"%{query}%")) |
+          (Product.barcode.like(f"%{query}%"))) & (Product.user_id==int(session["user_id"]))
+          ).order_by(desc(Product.product_id)).all()
     products_filte=int(filt)      
     if products_filte==1:
-           products = Product.query.filter(Product.quantity_float==0.0).order_by(desc(Product.product_id)).all()
+           products = Product.query.filter(Product.quantity_float==0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
     elif products_filte==2:
-           products = Product.query.filter(Product.quantity_float>0.0).order_by(desc(Product.product_id)).all()
+           products = Product.query.filter(Product.quantity_float>0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
     
  
     # render to PDF
@@ -912,22 +1033,22 @@ def products_pdf(filt,query=""):
 ##suppliers
 @app.route("/managesuppliers",methods=["GET"])
 def managesuppliers():
-    
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("manage_suppliers.html")
 @app.route("/suppliers/add",methods=["GET"])
 def addsupplier():
-    
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("addsuplier.html")
 @app.route("/suppliers/insert", methods=["POST"])
 def insertsupplier():
-    
+    if "user" not in session: return redirect(url_for("login"))
     
     
     
     supplier_name=request.json["supplier_name"]
     supplier_email=request.json["supplier_email"]
     supplier_phone=request.json["supplier_phone"]
-    supplier = Suppliers(name=supplier_name,email=supplier_email,phone=supplier_phone)
+    supplier = Suppliers(name=supplier_name,email=supplier_email,phone=supplier_phone,user_id=int(session["user_id"]))
     db2.session.add(supplier)
     db2.session.commit()
     print(supplier)
@@ -941,7 +1062,8 @@ def insertsupplier():
     })
 @app.route("/suppliers/list", methods=["GET"])
 def supplierslist():
-     suppliers=Suppliers.query.all()
+     if "user" not in session: return redirect(url_for("login"))
+     suppliers=Suppliers.query.filter(Suppliers.user_id==int(session["user_id"])).all()
      response = make_response(render_template("suppliers_list.html",data=suppliers))
      response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
      response.headers["Pragma"] = "no-cache"
@@ -951,6 +1073,7 @@ def supplierslist():
 
 @app.route("/supplier/<int:supplier_id>/viewpurchases", methods=["GET", "POST"])
 def view_supplier_purchases(supplier_id):
+    if "user" not in session: return redirect(url_for("login"))
     db = get_db(); cursor = db.cursor()
     cursor.execute("""SELECT 
         s.supplier_id,s.name,
@@ -965,6 +1088,7 @@ def view_supplier_purchases(supplier_id):
     return render_template("supplier_purchases.html",data=results)
 @app.route("/supplier/<int:supplier_id>/edit", methods=["GET", "POST"])
 def edit_supplier(supplier_id):
+    if "user" not in session: return redirect(url_for("login"))
     supplier = Suppliers.query.get_or_404(supplier_id)
 
     if request.method == "POST":
@@ -985,8 +1109,9 @@ def edit_supplier(supplier_id):
     return render_template("update_supplier.html", supplier=supplier)
 @app.route("/suppliers/select_list", methods=[ "POST"])
 def supliersselectlist():
+    if "user" not in session: return redirect(url_for("login"))
     # 🔹 directly reuse the same query
-    suppliers = Suppliers.query.all()
+    suppliers = Suppliers.query.filter(Suppliers.user_id==int(session["user_id"])).all()
     list1=[]
     for supplier in suppliers:
        x={"supplier_id":supplier.supplier_id , "name": supplier.name}
@@ -998,17 +1123,20 @@ def supliersselectlist():
 ###puchases
 @app.route("/managepurchases",methods=["GET"])
 def managepurchases():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("managepurchases.html")
 @app.route("/purchase/new",methods=["POST"])
 def purchaseaddsupplier():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("purchase_add_supplier.html")
 @app.route("/purchase/add",methods=["POST"])
 def addpurchase():
+    if "user" not in session: return redirect(url_for("login"))
     supplier=request.form.get("supplier")
     status=int(request.form.get("status"))
     description=request.form.get("description")
     print(status)
-    new_purchase=Purchases(supplier_id=supplier,status=status,description=description)
+    new_purchase=Purchases(supplier_id=supplier,status=status,description=description,user_id=int(session["user_id"]))
     db2.session.add(new_purchase)
     db2.session.commit()
     print(new_purchase,new_purchase.purchase_id)
@@ -1016,7 +1144,7 @@ def addpurchase():
  
 @app.route("/purchase/<int:purchase_id>/additems",methods=["GET", "POST"])
 def additems(purchase_id):
- 
+    if "user" not in session: return redirect(url_for("login"))
     purchase=None
     print(purchase_id)
     
@@ -1026,14 +1154,19 @@ def additems(purchase_id):
     return render_template("purchases_items.html",purchase=purchase,pcase=1)
 @app.route("/purchase/<int:purchase_id>/remove", methods=["GET", "POST"])
 def remove_purchase(purchase_id):
+    if "user" not in session: return redirect(url_for("login"))
     purchase = Purchases.query.get(purchase_id)
     print("purchase to delete:",purchase.purchase_id)
     if request.method == "POST":
         if purchase:
-            transaction=Transactions.query.filter(Transactions.purchase_id==purchase_id).first()
+            transaction=Transactions.query.filter(Transactions.purchase_id==purchase_id,Transactions.user_id==int(session["user_id"])).first()
             purchase_items = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
             for item in purchase_items:
-            	db2.session.delete(item)
+                 items_usage=SalePurchaseUsage.query.filter(SalePurchaseUsage.purchase_item_id==item.purchase_item_id).all()
+                 for u in items_usage:
+        	           db2.session.delete(u)
+                 db2.session.flush()
+                 db2.session.delete(item)
             if transaction:
                 db2.session.delete(transaction)
             db2.session.commit()
@@ -1044,7 +1177,7 @@ def remove_purchase(purchase_id):
     return render_template("confirm_delete_purchase.html", purchase=purchase)
 @app.route("/purchase/<int:purchase_id>/confirm", methods=["GET"])
 def save_purchase(purchase_id):
-    
+    if "user" not in session: return redirect(url_for("login"))
     purchase = Purchases.query.get(purchase_id)
     print("purchase to confirm:",purchase.purchase_id)
     total=0
@@ -1054,22 +1187,22 @@ def save_purchase(purchase_id):
            total+=item.purchase_price*item.quantity_float
         purchase.total_amount=total
         if purchase.status:
-              transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=total)
+              transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=total,user_id=int(session["user_id"]))
               db2.session.add(transaction)
         db2.session.commit()
     return render_template("managepurchases.html")
 @app.route("/purchase/<int:purchase_id>/complete", methods=["GET"])
 def complete_purchase(purchase_id):
-    
+    if "user" not in session: return redirect(url_for("login"))
     purchase = Purchases.query.get(purchase_id)
     print("purchase to confirm:",purchase.purchase_id)
     if purchase and not purchase.status:
         purchase.status=1
-        transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=purchase.total_amount)
+        transaction=Transactions(purchase_id=purchase_id,type="purchase",amount=purchase.total_amount,user_id=int(session["user_id"]))
         db2.session.add(transaction)
         items=PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase.purchase_id).all()
         for item in items:
-            product=Product.query.filter(Product.product_id==item.product_id).first()
+            product=Product.query.filter(Product.product_id==item.product_id,Product.user_id==int(session["user_id"])).first()
             if product:
                 product.quantity_float+=item.quantity_float
                 batch=ProductBatches(product_id=product.product_id,purchase_price=item.purchase_price,quantity_float=product.quantity_float)
@@ -1078,12 +1211,13 @@ def complete_purchase(purchase_id):
     return render_template("managepurchases.html")
 @app.route("/purchaseslist",methods=["GET"])
 def purchaseslist():
-	purchases = Purchases.query.order_by(desc(Purchases.purchase_date)).all()
-	response = make_response(render_template("purchases_list.html",data=purchases))
-	response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-	response.headers["Pragma"] = "no-cache"
-	response.headers["Expires"] = "0"
-	return response
+    if "user" not in session: return redirect(url_for("login"))
+    purchases = Purchases.query.filter(Purchases.user_id==int(session["user_id"])).order_by(desc(Purchases.purchase_date)).all()
+    response = make_response(render_template("purchases_list.html",data=purchases))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 @app.route("/purchase/<int:purchase_id>/viewitems", methods=["GET", "POST"])
 def view_items(purchase_id):
     db = get_db(); cursor = db.cursor()
@@ -1102,12 +1236,12 @@ order by p.purchase_date DESC""",(purchase_id,))
     return render_template("purchase_items_view.html",data=results,purchase_id=purchase_id)
 @app.route("/purchase/update", methods=["GET", "POST"])
 def updatepurchase():
-    
+    if "user" not in session: return redirect(url_for("login"))
     purchase_id=int(request.json["purchase_id"])
     target=request.json["target"]
     new_value=request.json["new_value"]
     
-    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
+    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id,Purchases.user_id==int(session["user_id"])).first()
     if purchase:
        
        if target=="description":
@@ -1119,7 +1253,7 @@ def updatepurchase():
     })
 @app.route("/purchase/update_item", methods=["GET", "POST"])
 def updatepurchaseitem():
-    
+    if "user" not in session: return redirect(url_for("login"))
     purchase_item_id=int(request.json["purchase_item_id"])
     product_id=int(request.json["product_id"])
     purchase_id=int(request.json["purchase_id"])
@@ -1134,12 +1268,12 @@ def updatepurchaseitem():
        elif target=="purchaseprice":
         	item.purchase_price=float(new_value)
        else:
-            product=Product.query.filter(Product.product_id==product_id).first()
+            product=Product.query.filter(Product.product_id==product_id,Product.user_id==int(session["user_id"])).first()
             if product:
                 product.current_price=float(new_value)
        db2.session.commit()
-    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
-    transaction=Transactions.query.filter(Transactions.purchase_id==purchase_id).first()
+    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id,Purchases.user_id==int(session["user_id"])).first()
+    transaction=Transactions.query.filter(Transactions.purchase_id==purchase_id,Transactions.user_id==int(session["user_id"])).first()
     results2 = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
     
     total=0
@@ -1158,12 +1292,15 @@ def updatepurchaseitem():
 ###transactions
 @app.route("/managetransactions",methods=["GET"])
 def managetransactions():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("manage_transactions.html")
 @app.route("/transaction/new",methods=["GET"])
 def newtransaction():
+    if "user" not in session: return redirect(url_for("login"))
     return render_template("addtransaction.html")
 @app.route("/transaction/add",methods=["POST"])
 def addtransaction():
+    if "user" not in session: return redirect(url_for("login"))
     transaction_type = request.json["transaction_type"]
     transaction_amount = float(request.json["transaction_amount"])
     transaction_date = request.json["transaction_date"]
@@ -1174,10 +1311,10 @@ def addtransaction():
         print()
         print(transaction_date.split('-')[0])
         xd=datetime(year,month,day)
-        transaction=Transactions(type=transaction_type,amount=transaction_amount,date=xd)
+        transaction=Transactions(type=transaction_type,amount=transaction_amount,date=xd,user_id=int(session["user_id"]))
         
     else:
-        transaction=Transactions(type=transaction_type,amount=transaction_amount)
+        transaction=Transactions(type=transaction_type,amount=transaction_amount,user_id=int(session["user_id"]))
     db2.session.add(transaction)
     db2.session.commit()
     
@@ -1190,6 +1327,7 @@ def addtransaction():
     return render_template("addtransaction.html")
 @app.route("/transaction/<int:transaction_id>/remove", methods=["GET", "POST"])
 def remove_transaction(transaction_id):
+    if "user" not in session: return redirect(url_for("login"))
     transaction = Transactions.query.get(transaction_id)
     if request.method == "POST":
         db2.session.delete(transaction)
@@ -1208,10 +1346,11 @@ def remove_transaction(transaction_id):
         
 @app.route("/transactions/list/<string:filt>",methods=["GET"])
 def transactionslist(filt):
+    if "user" not in session: return redirect(url_for("login"))
     if filt=="Today":
-       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today()).order_by(desc(Transactions.date)).all()
+       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today(),Transactions.user_id==int(session["user_id"])).order_by(desc(Transactions.date)).all()
     else:
-       transactions=Transactions.query.order_by(desc(Transactions.date)).all()
+       transactions=Transactions.query.filter(Transactions.user_id==int(session["user_id"])).order_by(desc(Transactions.date)).all()
     print(date.today())
     retdict=[]
     balance=0
@@ -1229,12 +1368,14 @@ def transactionslist(filt):
     return response
 @app.route("/transactions/list/update",methods=["POST"])
 def transactionslistupdate():
+    if "user" not in session: return redirect(url_for("login"))
     filt=request.json["filter"]
+    
     
     print("filt",filt)
     if filt=="Today":
     	
-       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today()).order_by(desc(Transactions.date)).all()
+       transactions = Transactions.query.filter(func.date(Transactions.date) == date.today(),Transactions.user_id==int(session["user_id"])).order_by(desc(Transactions.date)).all()
     else:
         
         
@@ -1245,7 +1386,7 @@ def transactionslistupdate():
         day=int(l[2])
         xdate=date(year,month,day)
         print("xdate",xdate)
-        transactions = Transactions.query.filter(func.date(Transactions.date) == xdate).order_by(desc(Transactions.date)).all()
+        transactions = Transactions.query.filter(func.date(Transactions.date) == xdate,Transactions.user_id==int(session["user_id"])).order_by(desc(Transactions.date)).all()
     retdict=[]
     balance=0
     for tr in transactions:
@@ -1260,6 +1401,26 @@ def transactionslistupdate():
               "results": retdict,
               "balance":balance
      })
+@app.route('/backup')
+def backup():
+    if "user" not in session: return redirect(url_for("login"))
+    # Connection info
+    db_user = 'root'
+    db_password = ''  # empty in your case
+    db_name = 'store_db'
+
+    # Create a unique backup filename with timestamp
+    backup_file = f"backup_{db_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+
+    # Command to export (dump) MySQL database
+    command = ['mysqldump', '-u', db_user, db_name]
+
+    # If there’s a password, add it like: ['mysqldump', '-u', db_user, f'-p{db_password}', db_name]
+    with open(backup_file, 'w') as f:
+        subprocess.run(command, stdout=f)
+
+    # Send file for download
+    return send_file(backup_file, as_attachment=True)
 @app.route("/test",methods=["POST","GET"])
 def test():
     sales = Sales.query.filter(func.date(Sales.sale_date) == date.today()).order_by(desc(Sales.sale_date))
@@ -1270,6 +1431,7 @@ def test():
     x=date(2025,5,13)
     xt= datetime.combine(x, datetime.min.time())
     print("xdate:,,",xt)
+    backup()
     return jsonify({
               "success": True,
               "test": "worked"	        
