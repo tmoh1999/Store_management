@@ -1,0 +1,21 @@
+alter table sales 
+add constraint fk_user_sales
+foreign key (user_id) 
+references user(id);
+
+alter table purchase 
+add constraint fk_user_purchases
+foreign key (user_id) 
+references user(id);
+
+alter table suppliers 
+add constraint fk_user_suppliers
+foreign key (user_id) 
+references user(id);
+
+alter table transactions 
+add constraint fk_user_transactions
+foreign key (user_id) 
+references user(id);
+
+
