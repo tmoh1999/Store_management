@@ -2,12 +2,12 @@ const $ = id => document.getElementById(id);
 function openScanner() {
 	console.log(1991);
       // open scan page in popup
-      window.open("/scanner", "scanner", "width=500,height=400");
+      window.open("/products/scanner", "scanner", "width=500,height=400");
     }
 function searchquery(query){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/search2", {
+      fetch("/products/search2", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -30,7 +30,7 @@ let input=event.target;
 let id=input.id;
 parts=id.split('-')
 console.log(id,parts);
-fetch("/sale/update_item", {
+fetch("/sales/sale/update_item", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -62,7 +62,7 @@ function setBarcode(value) {
 function addsaleitems(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/sale/add_item", {
+      fetch("/sales/sale/add_item", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -84,7 +84,7 @@ function addsaleitems(){
 }
 function SaveSale(){
 //let currentStatus = parseInt($("status").textContent);
-      fetch("/sale/confirm", {
+      fetch("/sales/sale/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -102,7 +102,7 @@ function SaveSale(){
 function CancelSale(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/sale/remove", {
+      fetch("/sales/sale/remove", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -145,7 +145,7 @@ for (let i=0;i<data["results"].length;i++){
    let item_id=data["results"][i]["item_id"]
    button.addEventListener("click",function () {
    
-  window.open(`/product/select/sale_items_before/${item_id}`, '_blank', 'width=600,height=400');
+  window.open(`/products/product/select/sale_items_before/${item_id}`, '_blank', 'width=600,height=400');
 });
 cell1.appendChild(button);
   }else{
@@ -187,7 +187,7 @@ let input2 = document.createElement("input");
 	function selectResponse(x){
           
           console.log(555);
-          fetch("/sale/refresh", {
+          fetch("/sales/sale/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

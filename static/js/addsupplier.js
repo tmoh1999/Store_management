@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 function addsupplier(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/suppliers/insert", {
+      fetch("/suppliers/suppliers/insert", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

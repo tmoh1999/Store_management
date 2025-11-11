@@ -12,7 +12,7 @@
 	<input type="text" id="display_type" value="{{ type or '' }}" style="display:None;">
 		<input type="text" id="display_row_id" value="{{ row_id or '' }}" style="display:None;">
 <div class="container py-4">
-	<input id="search_q" type="text" class="form-control border-primary text-center fw-semibold"  name="q" placeholder="name or barcode" onchange="updatelist()">
+	<input id="search_q" type="text" class="form-control border-primary text-center fw-semibold"  name="q" placeholder="name or barcode" oninput="updatelist()">
     <h2 class="mb-4">Products</h2>
     <select class="form-select w-auto bg-secondary" id="products_filter" onchange="updatelist()">
             <option value="0">ALL</option>
@@ -51,7 +51,7 @@
                     {% if purchase_id %}
                     <td class="d-flex flex-column justify-content-center gap-2 h-100" style="position:sticky;right:0;">
                         <button class="btn btn-sm btn-success"
-                            onclick="window.open('/product/{{ row.product_id }}/addproducts', '_blank', 'width=600,height=400')">
+                            onclick="window.open('/products/product/{{ row.product_id }}/addproducts', '_blank', 'width=600,height=400')">
                             Add
                         </button>
                     </td>
@@ -60,15 +60,15 @@
                     <td class="d-flex flex-column justify-content-center gap-2 h-100" style="position:sticky;right:0;">
                         
                             <button class="btn btn-sm btn-info"
-                                onclick="window.open('/product/{{ row.product_id }}/viewsales', '_blank', 'width=600,height=400')">
+                                onclick="window.open('/products/product/{{ row.product_id }}/viewsales', '_blank', 'width=600,height=400')">
                                 View
                             </button>
                             <button class="btn btn-sm btn-warning"
-                                onclick="window.open('/product/{{ row.product_id }}/edit', '_blank', 'width=600,height=400')">
+                                onclick="window.open('/products/product/{{ row.product_id }}/edit', '_blank', 'width=600,height=400')">
                                 Edit
                             </button>
                             <button class="btn btn-sm btn-danger"
-                                onclick="window.open('/product/{{ row.product_id }}/remove', '_blank', 'width=600,height=400')">
+                                onclick="window.open('/products/product/{{ row.product_id }}/remove', '_blank', 'width=600,height=400')">
                                 Remove
                             </button>
                         

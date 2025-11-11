@@ -41,7 +41,7 @@
             
             <td>{{ row[2] }}</td>
             <td>
-            	<button class="btn btn-primary" onclick="window.open('/product/select/sale_items/{{ row[0] }}', '_blank', 'width=600,height=400')">
+            	<button class="btn btn-primary" onclick="window.open('/products/product/select/sale_items/{{ row[0] }}', '_blank', 'width=600,height=400')">
  +
  </button>
               <br>
@@ -67,7 +67,7 @@
 <script>
   function updateSaleItem(sale_id,item_id,casek,val){
           console.log(sale_id+item_id+casek+val);
-        fetch("/sale/update_item", {
+        fetch("/sales/sale/update_item", {
              method: "POST",
              headers: { "Content-Type": "application/json" },
              body: JSON.stringify({ 

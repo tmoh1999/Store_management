@@ -17,7 +17,7 @@
 <div class="container2">  
 <label for="number">Add Product</label>
 <br><br><br><br><br><br>
-	<button class="btn btn-primary" onclick="window.open('/product/select/purchase_items/{{purchase.purchase_id}}', '_blank', 'width=600,height=400')">
+	<button class="btn btn-primary" onclick="window.open('/products/product/select/purchase_items/{{purchase.purchase_id}}', '_blank', 'width=600,height=400')">
  Select Product
  </button>
  <br><br><br>
@@ -48,9 +48,9 @@
      
 <br><br><br><br><br><br>
 {% if not pcase %}
-<button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/confirm', '_blank', 'width=600,height=400')">confirm purchase</button>
+<button type="button" onclick="window.open('/purchases/purchase/{{ purchase.purchase_id }}/confirm', '_blank', 'width=600,height=400')">confirm purchase</button>
 <br><br><br>
-<button type="button" onclick="window.open('/purchase/{{ purchase.purchase_id }}/remove', '_blank', 'width=600,height=400')">cancel purchase</button>
+<button type="button" onclick="window.open('/purchases/purchase/{{ purchase.purchase_id }}/remove', '_blank', 'width=600,height=400')">cancel purchase</button>
 </div>
 {%endif%}
 <script src="{{ url_for('static', filename='js/scanbrcode.js') }}"></script>

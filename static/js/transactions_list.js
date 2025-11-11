@@ -28,7 +28,7 @@ let transId=data["results"][i]["id"]
 button.textContent = "Remove";
 button.className="btn btn-sm btn-danger";
 button.addEventListener("click", function () {
-  window.open(`/transaction/${transId}/remove`, '_blank', 'width=600,height=400');
+  window.open(`/transactions/transaction/${transId}/remove`, '_blank', 'width=600,height=400');
 });
  cell5.appendChild(button)
 
@@ -39,7 +39,7 @@ button.addEventListener("click", function () {
 
 function updatelist(d){
 	console.log(15);
-	fetch("/transactions/list/update", {
+	fetch("/transactions/transactions/list/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

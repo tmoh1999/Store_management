@@ -31,7 +31,7 @@ for (let i=0;i<data["results"].length;i++){
 
 
 function updatelist2(){
-	fetch("/sale/statistiques", {
+	fetch("/sales/sale/statistiques", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -2,9 +2,9 @@ const $ = id => document.getElementById(id);
 console.log(999);
 function updateproduct(){
 	 const prod_id=$("product_id").value
-	console.log(`/product/${prod_id}/edit`)
+	
      //let currentStatus = parseInt($("status").textContent);
-      fetch(`/product/${prod_id}/edit`, {
+      fetch(`/products/product/${prod_id}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -43,7 +43,7 @@ tot3+=parseFloat(data["results"][i]["profit"])*parseFloat(data["results"][i]["qu
 
 
 function updatelist2(){
-	fetch("/saleitemslist/update", {
+	fetch("/sales/saleitemslist/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

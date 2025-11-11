@@ -79,7 +79,7 @@ document.getElementById("profit_total").innerHTML=xtot2-xtot;
 <script>
   function updatePurchaseItem(purchase_item_id,product_id,purchase_id,casek,val){
           console.log(purchase_item_id+product_id+casek+val);
-        fetch("/purchase/update_item", {
+        fetch("/purchases/purchase/update_item", {
              method: "POST",
              headers: { "Content-Type": "application/json" },
              body: JSON.stringify({ 

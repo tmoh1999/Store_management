@@ -43,7 +43,7 @@ function CreateSalesItemList(data) {
         btnView.className = "btn btn-success btn-sm w-100";
         btnView.textContent = "View";
         btnView.addEventListener("click", () => {
-            window.open(`/sales/${item.sale_id}/viewsaleitems`, '_blank', 'width=600,height=400');
+            window.open(`/sales/sales/${item.sale_id}/viewsaleitems`, '_blank', 'width=600,height=400');
         });
 
         // Remove button
@@ -66,7 +66,7 @@ function updatelist(){
 	
 	 console.log(document.getElementById("sales_filter").value);
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/saleslist/update", {
+      fetch("/sales/saleslist/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -83,7 +83,7 @@ function updatelist(){
        });
 }
 function updatelist2(d){
-	fetch("/saleslist/update", {
+	fetch("/sales/saleslist/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -113,7 +113,7 @@ function updatetotal(val){
 }
 
 function removeSale(sale_id){
-	fetch("/sale/remove", {
+	fetch("/sales/sale/remove", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

@@ -35,12 +35,12 @@
                     <td class="sticky-col">
                         <div class="d-flex flex-wrap gap-2 justify-content-center">
                             {% if not row.status %}
-                            <a href="/purchase/{{ row.purchase_id }}/complete" target="_blank" class="btn btn-sm btn-warning">Complete</a>
+                            <a href="/purchases/purchase/{{ row.purchase_id }}/complete" target="_blank" class="btn btn-sm btn-warning">Complete</a>
                             {% endif %}
-                            <a href="/purchase/{{ row.purchase_id }}/additems" target="_blank" class="btn btn-sm btn-success">Add</a>
-                            <a href="/purchase/{{ row.purchase_id }}/viewitems" target="_blank" class="btn btn-sm btn-info">View</a>
+                            <a href="/purchases/purchase/{{ row.purchase_id }}/additems" target="_blank" class="btn btn-sm btn-success">Add</a>
+                            <a href="/purchases/purchase/{{ row.purchase_id }}/viewitems" target="_blank" class="btn btn-sm btn-info">View</a>
 
-                            <a href="/purchase/{{ row.purchase_id }}/remove" target="_blank" class="btn btn-sm btn-danger">Rm</a>
+                            <a href="/purchases/purchase/{{ row.purchase_id }}/remove" target="_blank" class="btn btn-sm btn-danger">Rm</a>
                         </div>
                     </td>
                 </tr>
@@ -80,7 +80,7 @@ thead .sticky-col {
 <script>
   function updatePurchase(purchase_id,casek,val){
           
-        fetch("/purchase/update", {
+        fetch("/purchases/purchase/update", {
              method: "POST",
              headers: { "Content-Type": "application/json" },
              body: JSON.stringify({ 

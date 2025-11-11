@@ -58,7 +58,7 @@
                     <td>{{ row["total_amount"] }}</td>
                     <td></td>
                     <td class="d-flex flex-column justify-content-center gap-2 h-100" style="position: sticky; right: 0; ">
-                        <button class="btn btn-success btn-sm w-100" onclick="window.open('/sales/{{ row["sale_id"] }}/viewsaleitems', '_blank', 'width=600,height=400')">View</button>
+                        <button class="btn btn-success btn-sm w-100" onclick="window.open('/sales/sales/{{ row["sale_id"] }}/viewsaleitems', '_blank', 'width=600,height=400')">View</button>
                         <button class="btn btn-danger btn-sm w-100" onclick="removeSale({{ row["sale_id"] }})">Remove</button>
                     </td>
                 </tr>

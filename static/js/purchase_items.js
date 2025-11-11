@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 function addproduct(){
 	
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/insertproductpurchase", {
+      fetch("/products/insertproductpurchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -23,7 +23,7 @@ function addproduct(){
 }
 function SavePurchase(){
 //let currentStatus = parseInt($("status").textContent);
-      fetch("/purchase/confirm", {
+      fetch("/purchases/purchase/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

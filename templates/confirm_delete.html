@@ -24,9 +24,9 @@ font-size:50px
     <h1>Confirm Delete</h1>
     <p>Are you sure you want to delete <strong>{{ product.name }}</strong>?</p>
     
-    <form method="POST" action="{{ url_for('remove_product', product_id=product.product_id) }}">
+    <form method="POST" action="{{ url_for('products.remove_product', product_id=product.product_id) }}">
         <button type="submit">Yes, Delete</button>
-        <a href="{{ url_for('productlist') }}">Cancel</a>
+        <a href="{{ url_for('products.productlist') }}">Cancel</a>
     </form>
   </div>
 </body>

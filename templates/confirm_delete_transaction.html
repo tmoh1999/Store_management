@@ -24,9 +24,9 @@ font-size:50px
     <h1>Confirm Delete</h1>
     <p>Are you sure you want to delete <strong>{{ transaction.id }}</strong>?</p>
     
-    <form method="POST" action="{{ url_for('remove_transaction', transaction_id=transaction.id) }}">
+    <form method="POST" action="{{ url_for('transactions.remove_transaction', transaction_id=transaction.id) }}">
         <button type="submit">Yes, Delete</button>
-        <a href="{{ url_for('transactionslist',filt='Today') }}">Cancel</a>
+        <a href="{{ url_for('transactions.transactionslist',filt='Today') }}">Cancel</a>
     </form>
   </div>
 </body>

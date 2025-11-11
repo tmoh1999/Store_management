@@ -43,7 +43,7 @@ function CreateSalesItemList(data) {
         btnAdd.className = "btn btn-sm btn-success";
         btnAdd.textContent = "Add";
         btnAdd.addEventListener("click", () => {
-            window.open(`/product/${item.id}/addproducts`, '_blank', 'width=600,height=400');
+            window.open(`/products/product/${item.id}/addproducts`, '_blank', 'width=600,height=400');
         });
        cell6.appendChild(btnAdd);
         } else if (dmode==3){
@@ -65,21 +65,21 @@ function CreateSalesItemList(data) {
         btnView.className = "btn btn-sm btn-info";
         btnView.textContent = "View";
         btnView.addEventListener("click", () => {
-            window.open(`/product/${item.id}/viewsales`, '_blank', 'width=600,height=400');
+            window.open(`/products/product/${item.id}/viewsales`, '_blank', 'width=600,height=400');
         });
         // View button
         let btnEdit = document.createElement("button");
         btnEdit.className = "btn btn-sm btn-warning";
         btnEdit.textContent = "Edit";
         btnEdit.addEventListener("click", () => {
-            window.open(`/product/${item.id}/edit`, '_blank', 'width=600,height=400');
+            window.open(`/products/product/${item.id}/edit`, '_blank', 'width=600,height=400');
         });
                 // View button
         let btnRemove = document.createElement("button");
         btnRemove.className = "btn btn-sm btn-danger";
         btnRemove.textContent = "Remove";
         btnRemove.addEventListener("click", () => {
-            window.open(`/product/${item.id}/remove`, '_blank', 'width=600,height=400');
+            window.open(`/products/product/${item.id}/remove`, '_blank', 'width=600,height=400');
         });
         
 
@@ -97,7 +97,7 @@ function updatelist(){
 	
 	 
      //let currentStatus = parseInt($("status").textContent);
-      fetch("/productlist", {
+      fetch("/products/productlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -118,7 +118,7 @@ function updatelist(){
 
 
 function selectclick(product_id, row_id, type){
-    fetch("/product/selected", {
+    fetch("/products/product/selected", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ product_id, row_id, type })
@@ -137,5 +137,5 @@ function selectclick(product_id, row_id, type){
 function printProducts(){
 let query=document.getElementById("search_q").value;
 let filt=document.getElementById("products_filter").value;
-window.open(`/products.pdf/${ filt }/${ query }`, '_blank', 'width=600,height=400')
+window.open(`/products/products.pdf/${ filt }/${ query }`, '_blank', 'width=600,height=400')
 }

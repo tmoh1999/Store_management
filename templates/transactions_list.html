@@ -12,7 +12,7 @@
 <div class="container py-4">
 	
     <h2 id="caption_balance" >Transactions: {{ balance }}</h2>
-<form action="/transaction/new" class="text-end" >
+<form action="/transactions/transaction/new" class="text-end" >
     
        
      <button type="submit" class="btn btn-primary me-1">new transaction</button>
@@ -48,7 +48,7 @@
                     <td>{{ row["amount"] }}</td>
                     <td class="sticky-col">
                         <button class="btn btn-sm btn-danger"
-                            onclick="window.open('/transaction/{{ row["id"] }}/remove', '_blank', 'width=600,height=400')">
+                            onclick="window.open('/transactions/transaction/{{ row["id"] }}/remove', '_blank', 'width=600,height=400')">
                             Remove
                         </button>
                     </td>
