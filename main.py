@@ -1,14 +1,5 @@
-from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file,session,flash
-from datetime import datetime,date,timedelta
+from flask import Flask,redirect,url_for,session
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.sql import func
-from openpyxl import load_workbook,Workbook
-from sqlalchemy import desc
-from weasyprint import HTML,CSS
-import io
-import os
-import webbrowser
-import subprocess
 from models import *
 from blueprints import users_bp,products_bp,sales_bp,suppliers_bp,purchases_bp,transactions_bp,tools_bp
 app = Flask(__name__)

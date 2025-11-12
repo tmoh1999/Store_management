@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
 import mysql.connector
+from datetime import date,timedelta
 db2 = SQLAlchemy()
 
 

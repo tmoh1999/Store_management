@@ -1,14 +1,8 @@
-from flask import Flask, render_template, request, jsonify,redirect,url_for,make_response,send_file,session,flash,Blueprint
-from datetime import datetime,date,timedelta
+from flask import render_template, request, jsonify,redirect,url_for,make_response,session,Blueprint
+from datetime import date,timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.sql import func
-from openpyxl import load_workbook,Workbook
 from sqlalchemy import desc
-from weasyprint import HTML,CSS
-import io
-import os
-import webbrowser
-import subprocess
 from models import *
 sales_bp = Blueprint('sales', __name__, url_prefix='/sales')
 

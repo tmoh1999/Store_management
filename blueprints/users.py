@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for,session,flash
-from models import db2, User
+from models import *
 from werkzeug.security import generate_password_hash, check_password_hash
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
