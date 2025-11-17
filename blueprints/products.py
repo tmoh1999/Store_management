@@ -16,6 +16,7 @@ products_bp = Blueprint('products', __name__, url_prefix='/products')
 def scanner():
     if "user" not in session: return redirect(url_for("users.login"))
     return render_template("scanbr.html")
+ 
 @products_bp.route("/manageproducts",methods=["GET"])
 def manageproducts():
     if "user" not in session: return redirect(url_for("users.login"))
