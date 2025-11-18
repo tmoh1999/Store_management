@@ -2,10 +2,11 @@ from flask import Blueprint, render_template, request, redirect, url_for,session
 from datetime import datetime,timedelta
 from models import *
 import jwt
+from config import SECRET_KEY
 from werkzeug.security import generate_password_hash, check_password_hash
 api_users_bp = Blueprint('api_users', __name__, url_prefix='/api/users')
 
-SECRET_KEY = "mathexam"
+
 @api_users_bp.route("/register", methods=["POST"])
 def register():
     # Ensure JSON request

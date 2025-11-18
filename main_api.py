@@ -2,16 +2,18 @@ from flask import Flask,redirect,url_for,session,jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from models import *
-from blueprints import api_users_bp,tools_bp
+from blueprints import api_users_bp,tools_bp,api_products_bp
+from config import SECRET_KEY
 app = Flask(__name__)
 CORS(app)
-app.secret_key = "mohmath"
+app.secret_key = SECRET_KEY
 app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:@localhost/store_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db2.init_app(app)
 
 app.register_blueprint(api_users_bp)
+app.register_blueprint(api_products_bp)
 app.register_blueprint(tools_bp)
 
 @app.route("/testapi", methods=["POST","GET"])
