@@ -184,3 +184,36 @@ def remove_product(user_id,product_id):
             "success": False,
             "status": "Data missing"
         })
+@api_products_bp.route("/export", methods=["GET"])
+@token_required
+def export_products(user_id):
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Products"
+
+    # Write header row
+    ws.append(["Name", "Barcode", "Quantity", "Price", "Purchase Price"])
+
+    # Fetch all products
+    products = Product.query.filter(Product.user_id==user_id).all()
+
+    for p in products:
+        # Get latest batch purchase price (or None if no batch exists)
+        item = PurchaseItems.query.filter_by(product_id=p.product_id).order_by(PurchaseItems.purchase_id.desc()).first()
+        purchase_price = item.purchase_price if item else None
+
+        ws.append([p.name, p.barcode, p.quantity_float, p.current_price, purchase_price])
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="products.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
