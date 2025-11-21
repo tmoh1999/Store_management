@@ -19,3 +19,4 @@ foreign key (user_id)
 references user(id);
 
 
+mysqld_safe -u $(whoami)
