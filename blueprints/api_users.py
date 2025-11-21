@@ -5,7 +5,7 @@ import jwt
 from config import SECRET_KEY
 from werkzeug.security import generate_password_hash, check_password_hash
 api_users_bp = Blueprint('api_users', __name__, url_prefix='/api/users')
-TOKEN_EXPIRES=10
+TOKEN_EXPIRES=7200
 
 @api_users_bp.route("/register", methods=["POST"])
 def register():
