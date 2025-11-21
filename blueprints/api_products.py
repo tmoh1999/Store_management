@@ -108,3 +108,79 @@ def productlist(user_id):
               "success": True,
               "results": results_list
      })
+@api_products_bp.route("/insertemptyproduct", methods=["POST"])
+@token_required
+def insertemptyproduct(user_id):
+    product_price = float(request.json["product_price"])
+    product_name=request.json["product_name"]
+    product_brcode=request.json["product_brcode"]
+    if product_brcode=="":
+       product_brcode=datetime.now().strftime("%Y%m%d%H%M%S%f")
+    product = Product.query.filter_by(barcode=product_brcode).first()
+    
+    if product:
+        return jsonify({
+            "success": True,
+            "status": "product updated",
+            "product_name": product_name,
+            "product_price": product_price,
+            "product_brcode":product_brcode
+        })
+    else:
+         
+         
+         
+         new_product=Product(name=product_name,current_price=product_price,barcode=product_brcode,user_id=user_id)
+         product = Product.query.filter_by(barcode=product_brcode).first()
+         #print(product)
+         db2.session.add(new_product)
+         db2.session.commit()
+         print(new_product.product_id)
+         return jsonify({
+              "success": True,
+              "status": "product added",
+              "product_name": product_name,
+              "product_price": product_price,
+              "product_brcode":product_brcode
+          })
+@api_products_bp.route("/<int:product_id>/update", methods=["GET", "POST"])
+@token_required
+def edit_product(user_id,product_id):
+    
+    product = Product.query.get_or_404(product_id)
+
+    if request.method == "POST":
+       if product:
+           product.name = request.json["product_name"]
+           product.current_price= float(request.json["product_price"])
+           product.barcode = request.json["product_brcode"]
+           db2.session.commit()
+       return jsonify({
+            "success": True,
+            "status": "product updated",
+            "product_name": product.name,
+            "product_price": product.current_price,
+            "product_brcode":product.barcode
+        })
+
+    return jsonify({
+            "success": False,
+            "status": "Data missing"
+        })
+@api_products_bp.route("/<int:product_id>/remove", methods=["GET"])
+@token_required
+def remove_product(user_id,product_id):
+    
+    product = Product.query.get_or_404(product_id)
+    if product:
+           db2.session.delete(product)
+           db2.session.commit()
+           return jsonify({
+            "success": True,
+            "status": "product deleted"
+           })
+
+    return jsonify({
+            "success": False,
+            "status": "Data missing"
+        })
