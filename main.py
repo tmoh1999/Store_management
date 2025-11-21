@@ -28,4 +28,4 @@ with app.app_context():
     db2.create_all()   # ✅ Creates all tables if they don't exist
     print("Tables created successfully!")
 print(app.root_path)
-app.run(host="0.0.0.0", port=5000, debug=True)
+app.run(host="0.0.0.0", port=8000, debug=True)
