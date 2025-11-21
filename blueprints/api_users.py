@@ -5,7 +5,7 @@ import jwt
 from config import SECRET_KEY
 from werkzeug.security import generate_password_hash, check_password_hash
 api_users_bp = Blueprint('api_users', __name__, url_prefix='/api/users')
-
+TOKEN_EXPIRES=10
 
 @api_users_bp.route("/register", methods=["POST"])
 def register():
@@ -34,7 +34,7 @@ def register():
     # Generate JWT token
     token = jwt.encode({
         "user_id": new_user.id,
-        "exp": datetime.utcnow() + timedelta(hours=2)
+        "exp": datetime.utcnow() + timedelta(seconds=TOKEN_EXPIRES)
     }, SECRET_KEY, algorithm="HS256")
 
     # Return success JSON with token
@@ -65,7 +65,7 @@ def login():
     # Generate JWT token
     token = jwt.encode({
         "user_id": user.id,
-        "exp": datetime.utcnow() + timedelta(hours=2)
+        "exp": datetime.utcnow() + timedelta(seconds=TOKEN_EXPIRES)
     }, SECRET_KEY, algorithm="HS256")
     print("token:",token)
     # Return success JSON with token
