@@ -250,3 +250,66 @@ def products_pdf(user_id,filt="0",query=""):
         as_attachment=True,          # True → download, False → open in browser
         download_name="products.pdf"  # filename for the browser
     )	
+@api_products_bp.route("/import", methods=["POST"])
+@token_required
+def upload_products(user_id):
+    try:
+    	
+        file=5
+        if "file" not in request.files:
+        	return jsonify({
+            "success": False,
+            "status": "File Upload Failed"
+         })
+        
+        file = request.files["file"]
+        
+    except Exception as e:
+         print(e)
+    # Load the Excel file
+    wb = load_workbook(file)
+    ws = wb.active   # first sheet
+    name="Opening_"+datetime.now().strftime("%Y%m%d_%H%M")
+    
+    supplier=Suppliers(name=name,email="",phone="",user_id=user_id)
+    db2.session.add(supplier)
+    db2.session.flush()
+    purchase=Purchases(supplier_id=supplier.supplier_id,user_id=user_id)
+    db2.session.add(purchase)
+    db2.session.flush()
+    # Skip headers (row 1)
+    total=0
+    for row in ws.iter_rows(min_row=2, values_only=True):
+          print("  ..... ,  ",row)
+          name,barcode,quantity,price,purchase_price=row
+          quantity=float(quantity)
+          purchase_price=float(purchase_price)
+          price=float(price)
+          pd=Product.query.filter(Product.barcode==barcode).first()
+          if pd:
+                print("barcode exists")
+                pd.quantity_float += quantity
+                pd.current_price = price  # if you want latest price
+          else:
+               pd=Product(name=name,barcode=barcode,quantity_float=quantity,current_price=price,user_id=user_id)
+               db2.session.add(pd)
+               db2.session.flush()
+          total+=quantity*purchase_price
+          new_prod_batch=ProductBatches(product_id=pd.product_id,purchase_price=purchase_price,quantity_float=quantity)
+          db2.session.add(new_prod_batch)
+              
+          
+          new_purchase_item=PurchaseItems(product_id=pd.product_id,purchase_price=purchase_price,purchase_id=purchase.purchase_id,quantity_float=quantity,remain_quantity=quantity)
+          db2.session.add(new_purchase_item)
+              
+    purchase.total_amount=total   
+    db2.session.commit()
+        
+        
+    
+    return jsonify({
+            "success": True,
+            "status": "Products Uploaded"
+     })
+    
+    
