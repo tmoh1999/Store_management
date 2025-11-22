@@ -399,10 +399,11 @@ def products_pdf(filt,query=""):
           ((Product.name.like(f"%{query}%")) |
           (Product.barcode.like(f"%{query}%"))) & (Product.user_id==int(session["user_id"]))
           ).order_by(desc(Product.product_id)).all()
-    products_filte=int(filt)      
-    if products_filte==1:
+    if filt:
+        products_filte=int(filt)      
+        if products_filte==1:
            products = Product.query.filter(Product.quantity_float==0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
-    elif products_filte==2:
+        elif products_filte==2:
            products = Product.query.filter(Product.quantity_float>0.0,Product.user_id==int(session["user_id"])).order_by(desc(Product.product_id)).all()
     
  

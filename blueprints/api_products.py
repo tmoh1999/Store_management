@@ -1,4 +1,4 @@
-from flask import  render_template, request, jsonify,redirect,url_for,make_response,send_file,session,Blueprint
+from flask import  render_template, request, jsonify,redirect,url_for,make_response,send_file,session,Blueprint,current_app
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from openpyxl import load_workbook,Workbook
@@ -217,3 +217,36 @@ def export_products(user_id):
         download_name="products.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+@api_products_bp.route("/products.pdf/<string:filt>/", defaults={"query": ""})
+@api_products_bp.route("/products.pdf/<string:filt>/<string:query>/",methods=["GET"])
+@token_required
+def products_pdf(user_id,filt="0",query=""):
+    print(user_id,filt,query)
+    products_query = Product.query.filter(Product.user_id==user_id)
+    if query:
+        products_query = products_query.filter(
+            (Product.name.like(f"%{query}%")) |
+            (Product.barcode.like(f"%{query}%")))
+    if filt:
+       products_filter=int(filt)
+       if products_filter==1:
+             products_query = products_query.filter(Product.quantity_float==0.0)
+       elif products_filter==2:
+             products_query = products_query.filter(Product.quantity_float>0.0)
+    products=products_query.order_by(desc(Product.product_id)).all()
+ 
+    # render to PDF
+    html = render_template("products_list_pdf_template.html", data=products)
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    
+    pdf = HTML(string=html,base_url=current_app.root_path).write_pdf()
+    #pdf_bytes = HTML(string=html, base_url=app.root_path).write_pdf()
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="products.pdf"  # filename for the browser
+    )	
