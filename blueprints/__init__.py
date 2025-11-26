@@ -7,3 +7,4 @@ from .transactions import transactions_bp
 from .tools import tools_bp
 from .api_users import api_users_bp
 from .api_products import api_products_bp
+from .api_sales import api_sales_bp
