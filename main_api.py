@@ -4,10 +4,11 @@ from flask_cors import CORS
 from models import *
 from blueprints import api_users_bp,tools_bp,api_products_bp,api_sales_bp
 from config import SECRET_KEY
+import pymysql
 app = Flask(__name__)
 CORS(app)
 app.secret_key = SECRET_KEY
-app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:@localhost/store_db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "mysql+pymysql://root:mohamed@localhost/store_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db2.init_app(app)
@@ -24,6 +25,15 @@ def test_api():
         "message": "test work",
         "token": 1999
     }), 200
+
+#create database if not exist
+conn = pymysql.connect(
+    host='localhost',
+    user='root',
+    password='mohamed'
+)
+conn.cursor().execute("CREATE DATABASE IF NOT EXISTS store_db")
+conn.close()
 
 with app.app_context():
     db2.create_all()   # ✅ Creates all tables if they don't exist
