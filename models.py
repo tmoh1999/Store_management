@@ -61,6 +61,7 @@ class Sales(db2.Model):
     sale_id = db2.Column(db2.Integer, primary_key=True)
     sale_date = db2.Column(db2.DateTime(timezone=True), server_default=func.now())
     total_amount = db2.Column(db2.Float)
+    status = db2.Column(db2.String(64))
     user_id = db2.Column(db2.Integer, db2.ForeignKey("user.id"), nullable=False)
     def __repr__(self):
         return f"<Sale {self.sale_id}>"

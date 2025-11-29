@@ -18,5 +18,8 @@ add constraint fk_user_transactions
 foreign key (user_id) 
 references user(id);
 
+alter table sales add status varchar(64);
+update sales set status="incomplete"
+where sale_id>0;
 
 mysqld_safe -u $(whoami)
