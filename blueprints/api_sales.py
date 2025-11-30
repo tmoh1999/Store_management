@@ -45,18 +45,18 @@ def getsaleitems(user_id):
     results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     result_list2=[]
     for r in results2:
-       print(r.product_id)
-       if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
-       	x={"id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}
-       else:
-           x={"id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}    
+        print(r.product_id)
+        if r.product_id:
+            p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
+            x={"id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}
+        else:
+            x={"id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}    
            
-       result_list2.append(x)
+        result_list2.append(x)
     print(len(results2))
     total=0
     for st in results2:
-    	total+=st.unit_price*st.quantity_float
+        total+=st.unit_price*st.quantity_float
     print(total)
     
     return jsonify({
@@ -64,10 +64,10 @@ def getsaleitems(user_id):
               "results": result_list2,
               "total":total
     })
-def validateSaleItem(r):
+def validateSaleItem(r,user_id):
 	
    if r.product_id:
-       p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
+       p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
        p.quantity_float=max(p.quantity_float-r.quantity_float,0)
        ####for each item save reduced pjrchaseitem 
        purchase_items = PurchaseItems.query.filter(PurchaseItems.product_id == r.product_id).order_by(PurchaseItems.purchase_item_id).all()
@@ -84,10 +84,10 @@ def validateSaleItem(r):
               db2.session.add(sale_purchase_usage)
               batch.remain_quantity=0
        db2.session.commit()
-def rollBackSaleItem(item_id):
+def rollBackSaleItem(item_id,user_id):
     r=SaleItems.query.filter(SaleItems.item_id==item_id).first()
     if r and r.product_id:
-        p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==int(session["user_id"])).first()
+        p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
         p.quantity_float=p.quantity_float+r.quantity_float
         items_usage=SalePurchaseUsage.query.filter(SalePurchaseUsage.item_id==item_id).all()
         for u in items_usage:
@@ -109,10 +109,10 @@ def updatesaleitem(user_id):
     if item:
        if quantity!=item.quantity_float:
            if sale.status=="complete":
-               rollBackSaleItem(item_id)
+               rollBackSaleItem(item_id,user_id)
                item.quantity_float=quantity
                db2.session.flush()
-               validateSaleItem(item)
+               validateSaleItem(item,user_id)
                db2.session.commit()
            else:
                item.quantity_float=quantity
@@ -126,14 +126,14 @@ def updatesaleitem(user_id):
     result_list2=[]
     total=0
     for r in results2:
-       total+=r.quantity_float*r.unit_price
-       if r.product_id:
-       	p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
-       	x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
-       else:
+        total+=r.quantity_float*r.unit_price
+        if r.product_id:
+            p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
+            x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
+        else:
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}    
            
-       result_list2.append(x)
+        result_list2.append(x)
     sale.total_amount=total
     
     print(len(results2))
@@ -149,7 +149,7 @@ def updatesaleitem(user_id):
 def removesaleitem(user_id,item_id):
     item=SaleItems.query.filter(SaleItems.item_id==item_id).first()
     if item:
-        rollBackSaleItem(item.item_id)
+        rollBackSaleItem(item.item_id,user_id)
         db2.session.delete(item)
         db2.session.commit()
         return jsonify({
@@ -163,19 +163,15 @@ def removesaleitem(user_id,item_id):
 @api_sales_bp.route("/<int:sale_id>/remove", methods=["GET"])
 @token_required
 def removesale(user_id,sale_id):
-    
-    
-
-
     items=SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
     sale = Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==user_id).first()
     if sale.status=="complete":
-	    for item in items:
-	        rollBackSaleItem(item.item_id)
-	        db2.session.delete(item)
+        for item in items:
+            rollBackSaleItem(item.item_id,user_id)
+            db2.session.delete(item)
     else:
-	    for item in items:
-	        db2.session.delete(item)    	    
+        for item in items:
+            db2.session.delete(item)    	    
         
     db2.session.commit()
     
@@ -202,7 +198,7 @@ def confirmsale(user_id,sale_id):
     for r in results2:
        tot+=r.unit_price*r.quantity_float
        print(r.product_id)
-       validateSaleItem(r)
+       validateSaleItem(r,user_id)
 
                 
     sale=Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==user_id).first()
