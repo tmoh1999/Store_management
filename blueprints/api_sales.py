@@ -215,3 +215,20 @@ def confirmsale(user_id,sale_id):
               "sale_confirmed": sale_id,
               "sale_status":sale.status,
     })
+@api_sales_bp.route("/list",methods=["GET"])
+@token_required
+def getSalesList(user_id):
+    sales=Sales.query.filter(Sales.user_id==user_id).order_by(desc(Sales.sale_id)).all()
+    results=[
+        {
+            "id":sale.sale_id,
+            "date":sale.sale_date,
+            "total":sale.total_amount,
+            "status":sale.status
+        }
+        for sale in sales
+    ]
+    return jsonify({
+        "success":True,
+        "results":results,
+    })
