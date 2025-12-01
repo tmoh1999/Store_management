@@ -2,7 +2,7 @@ from flask import Flask,redirect,url_for,session,jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from models import *
-from blueprints import api_users_bp,tools_bp,api_products_bp,api_sales_bp
+from blueprints import api_users_bp,tools_bp,api_products_bp,api_sales_bp,api_transactions_bp
 from config import SECRET_KEY
 import pymysql
 app = Flask(__name__)
@@ -16,6 +16,7 @@ db2.init_app(app)
 app.register_blueprint(api_users_bp)
 app.register_blueprint(api_products_bp)
 app.register_blueprint(api_sales_bp)
+app.register_blueprint(api_transactions_bp)
 app.register_blueprint(tools_bp)
 
 @app.route("/testapi", methods=["POST","GET"])
