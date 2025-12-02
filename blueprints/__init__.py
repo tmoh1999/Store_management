@@ -9,3 +9,5 @@ from .api_users import api_users_bp
 from .api_products import api_products_bp
 from .api_sales import api_sales_bp
 from .api_transactions import api_transactions_bp
+from .api_purchases import api_purchases_bp
+from .api_suppliers import api_suppliers_bp
