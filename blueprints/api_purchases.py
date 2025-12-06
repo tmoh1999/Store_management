@@ -87,7 +87,29 @@ def update_purchase(user_id,purchase_id):
         "Success":False,
         "status":"Purchase update failed",
     })   
-
+@api_purchases_bp.route("/<int:purchase_id>/confirm",methods=["GET"])
+@token_required
+def confirm_purchase(user_id,purchase_id):
+    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
+    if purchase and purchase.status==False:
+        purchase.status=True
+        items=PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
+        for item in items:
+            product=Product.query.filter(Product.product_id==item.product_id).first()
+            if product:
+                product.quantity_float+=item.quantity_float
+                
+        transaction=Transactions(type="purchase",amount=purchase.total_amount,purchase_id=purchase_id,user_id=user_id)
+        db2.session.add(transaction)
+        db2.session.commit()
+        return jsonify({
+            "success":True,
+            "message":"purchase confirmed."
+        })      
+    return jsonify({
+        "success":False,
+        "message":"confirm purchase failed."
+    })
 @api_purchases_bp.route("/items/add", methods=["POST"])
 @token_required
 def add_purchase_item(user_id):
@@ -106,10 +128,11 @@ def add_purchase_item(user_id):
         # #product.current_price=product_price
         # db2.session.commit()      
         if  purchase:
-               purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=purchase_price,quantity_float=quantity,remain_quantity=quantity)
-               db2.session.add(purchase_item)
-               purchase.total_amount+=purchase_price*quantity
-        db2.session.commit()
+            purchase_item=PurchaseItems(purchase_id=purchase_id,product_id=product.product_id,purchase_price=purchase_price,quantity_float=quantity,remain_quantity=quantity)
+            db2.session.add(purchase_item)
+            db2.session.commit()
+            recalcultePurchaseTotal(purchase_id,user_id)
+
         return jsonify({
             "success": True,
             "status": "purchase item added",
@@ -125,7 +148,7 @@ def add_purchase_item(user_id):
 @token_required
 def getpurchaseitems(user_id):
     purchase_id=int(request.json["purchase_id"])
-    results2 = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
+    results2 = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).order_by(desc(PurchaseItems.purchase_item_id)).all()
     result_list2=[]
     for r in results2:
         print(r.product_id)
@@ -148,4 +171,73 @@ def getpurchaseitems(user_id):
               "total":total
     })
 
+@api_purchases_bp.route("/items/<int:item_id>/remove", methods=["GET"])
+@token_required
+def removepurchaseitem(user_id,item_id):
+    item=PurchaseItems.query.filter(PurchaseItems.purchase_item_id==item_id).first()
+    if item:
+        purchase=Purchases.query.filter(Purchases.purchase_id==item.purchase_id).first()
+        if purchase:
+            if purchase.status==False:
+                db2.session.delete(item)
+                db2.session.commit()
+                recalcultePurchaseTotal(item.purchase_id,user_id)
+                return jsonify({
+                    "success": True,
+                    "message":"item removed"
+                })
+            else:
+                return jsonify({
+                    "success": False,
+                    "message":"cannot modify in confirmed purchase"
+                })                
+    return jsonify({
+              "success": False,
+              "message":"Error:item not found"
+     })
+def recalcultePurchaseTotal(purchase_id,user_id):
+    purchase=Purchases.query.filter(Purchases.purchase_id==purchase_id).first()
+    if purchase:
+        total=0
+        items=PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).all()
+        for item in items:
+            total+=item.quantity_float*item.purchase_price
+        
+        purchase.total_amount=total
+        transaction=Transactions.query.filter(Transactions.purchase_id==purchase.purchase_id,Transactions.user_id==user_id)
+        if transaction:
+            transaction.amount=total
+        db2.session.commit()
+        return total
+    return 0
 
+@api_purchases_bp.route("/items/update",methods=["POST"])
+@token_required
+def updatepurchaseitem(user_id):
+    quantity=float(request.json["quantity"])
+    purchase_price=float(request.json["purchase_price"])
+    item_id=int(request.json["item_id"])
+
+    item=PurchaseItems.query.filter(PurchaseItems.purchase_item_id==item_id).first()
+    if item:
+        purchase=Purchases.query.filter(Purchases.purchase_id==item.purchase_id).first()
+        print("Status:",purchase.status)
+        if purchase.status==False:
+            item.quantity_float=quantity
+            item.remain_quantity=quantity
+            item.purchase_price=purchase_price
+            db2.session.commit()
+            recalcultePurchaseTotal(purchase.purchase_id,user_id)
+            return jsonify({
+                "success":True,
+                "message":"item updated",
+            })    
+        else:
+            return jsonify({
+                "success": False,
+                "message":"cannot modify in confirmed purchase"
+            })                  
+    return jsonify({
+        "success":False,
+        "message":"item update failed",
+    })
