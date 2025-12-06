@@ -42,7 +42,7 @@ def addsaleitem(user_id):
 @token_required
 def getsaleitems(user_id):
     sale_id=int(request.json["sale_id"])
-    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).order_by(desc(SaleItems.item_id)).all()
     result_list2=[]
     for r in results2:
         print(r.product_id)
@@ -204,7 +204,8 @@ def confirmsale(user_id,sale_id):
     sale=Sales.query.filter(Sales.sale_id==sale_id,Sales.user_id==user_id).first()
     sale.total_amount=tot
     sale.status="complete"
-    db2.session.commit()
+
+
     transaction=Transactions(sale_id=sale_id,type="sale",amount=tot,user_id=user_id)
     db2.session.add(transaction)
     db2.session.commit()
