@@ -120,8 +120,14 @@ def remove_product(user_id,product_id):
 @api_products_bp.route("/search",methods=["POST"])
 @token_required
 def search_product(user_id):
-    barcode=request.json["barcode"]
-    product:Product=Product.query.filter(Product.barcode==barcode).first()
+    target=request.json["field"]
+    print(request.json)
+    if target=="barcode":
+        barcode=request.json["value"]
+        product:Product=Product.query.filter(Product.barcode==barcode).first()
+    else:
+        product_id=int(request.json["value"])  
+        product:Product=Product.query.filter(Product.product_id==product_id).first()    
     if product:
         return jsonify({
             "success":True,
@@ -129,6 +135,7 @@ def search_product(user_id):
             "product_id":product.product_id,
             "product_name":product.name,
             "product_barcode":product.barcode,
+            "product_quantity":product.quantity_float
         })
     else:
         return jsonify({
