@@ -23,12 +23,38 @@ def addsale(user_id):
 def addsaleitem(user_id):
     
     sale_id=int(request.json["sale_id"])
-    
+    product_id=request.json["product_id"]
+    if request.json["product_id"]:
+        product_id=int(request.json["product_id"])
     price=float(request.json["price"])
     quantity=float(request.json["quantity"])
     description=request.json["description"]
-    print("fffff",description)
-    new_sale_item=SaleItems(sale_id=sale_id,unit_price=price,quantity_float=quantity,description=description)
+
+    
+    if product_id:
+        sale_items=SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+        for item in sale_items:
+            if item.product_id==product_id:
+                q=quantity+item.quantity_float
+                if not checkQuantity(product_id,user_id,q):
+                    return jsonify({
+                        "success": False,
+                        "message": "item adding failed",
+                    })
+                item.quantity_float+=quantity
+                db2.session.commit()
+                return jsonify({
+                        "success": True,
+                        "message": "item found and updated",
+                })
+
+
+    if not checkQuantity(product_id,user_id,quantity):
+        return jsonify({
+            "success": False,
+            "message": "item adding failed",
+        })
+    new_sale_item=SaleItems(sale_id=sale_id,product_id=product_id,unit_price=price,quantity_float=quantity,description=description)
     db2.session.add(new_sale_item)
     db2.session.commit()
     print(new_sale_item,new_sale_item.description)
@@ -64,12 +90,12 @@ def getsaleitems(user_id):
               "results": result_list2,
               "total":total
     })
-def validateSaleItem(r,user_id):
+def validateSaleItem(r:PurchaseItems,user_id):
 	
    if r.product_id:
        p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
-       p.quantity_float=max(p.quantity_float-r.quantity_float,0)
-       ####for each item save reduced pjrchaseitem 
+       p.quantity_float=p.quantity_float-r.quantity_float
+
        purchase_items = PurchaseItems.query.filter(PurchaseItems.product_id == r.product_id).order_by(PurchaseItems.purchase_item_id).all()
        g=r.quantity_float
        for batch in purchase_items:
@@ -95,6 +121,11 @@ def rollBackSaleItem(item_id,user_id):
               batch.remain_quantity+=u.quantity_used
               db2.session.delete(u)
     db2.session.commit()
+def checkQuantity(product_id,user_id,quantity):
+    if not product_id:
+        return True
+    p = Product.query.filter(Product.product_id==product_id,Product.user_id==user_id).first()
+    return quantity<=p.quantity_float
 @api_sales_bp.route("/items/update", methods=["GET", "POST"])
 @token_required
 def updatesaleitem(user_id):
@@ -104,9 +135,14 @@ def updatesaleitem(user_id):
     price=float(request.json["price"])
     quantity=float(request.json["quantity"])
     description=request.json["description"]   
-    sale=Sales.query.filter(Sales.sale_id==item.sale_id,Sales.user_id==user_id).first()
+    
     item=SaleItems.query.filter(SaleItems.item_id==item_id).first()
     if item:
+       sale=Sales.query.filter(Sales.sale_id==item.sale_id,Sales.user_id==user_id).first()
+       if not checkQuantity(item.product_id,user_id,quantity):
+           return jsonify({
+               "success": False
+           })
        if quantity!=item.quantity_float:
            if sale.status=="complete":
                rollBackSaleItem(item_id,user_id)
@@ -138,11 +174,10 @@ def updatesaleitem(user_id):
     
     print(len(results2))
     if transaction:
-       transaction.amount=total;
+       transaction.amount=total
     db2.session.commit()
     return jsonify({
-              "success": True,
-              "total":total
+              "success": True
     })
 @api_sales_bp.route("/items/<int:item_id>/remove", methods=["GET"])
 @token_required
