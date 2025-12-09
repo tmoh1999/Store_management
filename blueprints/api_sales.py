@@ -67,8 +67,8 @@ def addsaleitem(user_id):
 @api_sales_bp.route("/items", methods=["GET"])
 @token_required
 def getsaleitems(user_id):
-    sale_id=request.args.get("sale_id")
-    product_id=request.args.get("product_id")
+    sale_id=request.args.get("sale_id",type=int)
+    product_id=request.args.get("product_id",type=int)
     query=SaleItems.query
 
     print("test: ",product_id,"  .   ",sale_id)
