@@ -23,10 +23,20 @@ def addpurchase(user_id):
         "status":"purchase created",
         "id":new_purchase.purchase_id,
     })
-@api_purchases_bp.route("/list",methods=["GET"])
+@api_purchases_bp.route("",methods=["GET"])
 @token_required
 def purchaseList(user_id):
-    purchases=Purchases.query.filter(Purchases.user_id==user_id).order_by(desc(Purchases.purchase_id))
+    query=Purchases.query.filter(Purchases.user_id==user_id)
+    stdate=request.args.get("start_date")
+    endate=request.args.get("end_date")
+    supplier_id=request.args.get("supplier_id",type=int)
+    if stdate and endate :
+        start_date=getDate(stdate)
+        end_date=getDate(endate)
+        query = query.filter(func.date(Purchases.purchase_date) >= start_date,func.date(Purchases.purchase_date) <= end_date)
+    if supplier_id:
+        query = query.filter(Purchases.supplier_id==supplier_id)
+    purchases=query.order_by(desc(Purchases.purchase_id))
     results=[
         {
             "id":purchase.purchase_id,
@@ -144,11 +154,21 @@ def add_purchase_item(user_id):
         "success": False,
         "status": "purchase item adding failed",
     })
-@api_purchases_bp.route("/items/list", methods=["POST"])
+@api_purchases_bp.route("/items", methods=["GET"])
 @token_required
 def getpurchaseitems(user_id):
-    purchase_id=int(request.json["purchase_id"])
-    results2 = PurchaseItems.query.filter(PurchaseItems.purchase_id==purchase_id).order_by(desc(PurchaseItems.purchase_item_id)).all()
+    purchase_id=request.args.get("purchase_id",type=int)
+    product_id=request.args.get("product_id",type=int)
+    query=PurchaseItems.query
+
+    print("test: ",product_id,"  .   ",purchase_id)
+    if purchase_id:
+        query=query.filter(PurchaseItems.purchase_id==purchase_id)
+
+    if product_id:
+        query=query.filter(PurchaseItems.product_id==product_id)
+
+    results2 = query.order_by(desc(PurchaseItems.purchase_item_id)).all()
     result_list2=[]
     for r in results2:
         print(r.product_id)
