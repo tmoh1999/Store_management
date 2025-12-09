@@ -6,10 +6,20 @@ from sqlalchemy import desc
 from models import *
 from decorators import token_required
 api_transactions_bp = Blueprint('api_transactions', __name__, url_prefix='/api/transactions')
-@api_transactions_bp.route("/list",methods=["GET"])
+@api_transactions_bp.route("",methods=["GET"])
 @token_required
-def getTransactionsList(user_id):
-    transactions=Transactions.query.filter(Transactions.user_id==user_id).order_by(desc(Transactions.id)).all()
+def getTransactions(user_id):
+    query=Transactions.query.filter(Transactions.user_id==user_id)
+
+    stdate=request.args.get("start_date")
+    endate=request.args.get("end_date")
+
+    if stdate and endate :
+        start_date=getDate(stdate)
+        end_date=getDate(endate)
+        query = query.filter(func.date(Transactions.date) >= start_date,func.date(Transactions.date) <= end_date)
+
+    transactions=query.order_by(desc(Transactions.id)).all()
     results=[
         {
             "id":transaction.id,
