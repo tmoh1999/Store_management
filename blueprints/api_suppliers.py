@@ -21,9 +21,9 @@ def addsupplier(user_id):
         "success":True,
         "status":"supplier added ",
     })
-@api_suppliers_bp.route("/list",methods=["GET"])
+@api_suppliers_bp.route("",methods=["GET"])
 @token_required
-def getSuppliersList(user_id):
+def getSuppliers(user_id):
     suppliers=Suppliers.query.filter(Suppliers.user_id==user_id).order_by(desc(Suppliers.supplier_id)).all()
     results=[
         {
