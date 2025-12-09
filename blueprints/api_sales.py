@@ -64,14 +64,23 @@ def addsaleitem(user_id):
               "message": "item added",
     })
     
-@api_sales_bp.route("/items/list", methods=["POST"])
+@api_sales_bp.route("/items", methods=["GET"])
 @token_required
 def getsaleitems(user_id):
-    sale_id=int(request.json["sale_id"])
-    results2 = SaleItems.query.filter(SaleItems.sale_id==sale_id).order_by(desc(SaleItems.item_id)).all()
+    sale_id=request.args.get("sale_id")
+    product_id=request.args.get("product_id")
+    query=SaleItems.query
+
+    print("test: ",product_id,"  .   ",sale_id)
+    if sale_id:
+        query=query.filter(SaleItems.sale_id==sale_id)
+
+    if product_id:
+        query=query.filter(SaleItems.product_id==product_id)
+    
+    results2 = query.order_by(desc(SaleItems.item_id)).all()
     result_list2=[]
     for r in results2:
-        print(r.product_id)
         if r.product_id:
             p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
             x={"id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description}
@@ -251,10 +260,17 @@ def confirmsale(user_id,sale_id):
               "sale_confirmed": sale_id,
               "sale_status":sale.status,
     })
-@api_sales_bp.route("/list",methods=["GET"])
+@api_sales_bp.route("",methods=["GET"])
 @token_required
 def getSalesList(user_id):
-    sales=Sales.query.filter(Sales.user_id==user_id).order_by(desc(Sales.sale_id)).all()
+    query=Sales.query.filter(Sales.user_id==user_id)
+    stdate=request.args.get("start_date")
+    endate=request.args.get("end_date")
+    if stdate and endate :
+        start_date=getDate(stdate)
+        end_date=getDate(endate)
+        query = query.filter(func.date(Sales.sale_date) >= start_date,func.date(Sales.sale_date) <= end_date)
+    sales=query.order_by(desc(Sales.sale_id)).all()
     results=[
         {
             "id":sale.sale_id,
