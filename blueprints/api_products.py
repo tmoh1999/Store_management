@@ -12,29 +12,26 @@ from models import *
 api_products_bp = Blueprint('api_products', __name__, url_prefix='/api/products')
 
 
-@api_products_bp.route("/productlist",methods=["GET","POST"])
+@api_products_bp.route("",methods=["GET","POST"])
 @token_required
-def productlist(user_id):
-    #if "user" not in session: return redirect(url_for("users.login"))
-    
+def getProducts(user_id):
     products_query = Product.query.filter(Product.user_id==user_id)
-    
-    if request.method=="POST":
-        query = request.json["search_q"]
-        products_filter = int(request.json["products_filter"])
-        if query:
-            products_query = products_query.filter(
-            (Product.name.like(f"%{query}%")) |
-            (Product.barcode.like(f"%{query}%")))
+    query=request.args.get("search")
+    quantity_filter=request.args.get("quantity_filter",type=int)
+    if query:
+        products_query = products_query.filter(
+        (Product.name.like(f"%{query}%")) |
+        (Product.barcode.like(f"%{query}%")))
+
         
-        if products_filter==1:
-            products_query = products_query.filter(Product.quantity_float==0.0)
-        elif products_filter==2:
-            products_query = products_query.filter(Product.quantity_float>0.0)
-        products=products_query.order_by(desc(Product.product_id)).all()
+    if quantity_filter==1:
+        products_query = products_query.filter(Product.quantity_float==0.0)
+    elif quantity_filter==2:
+        products_query = products_query.filter(Product.quantity_float>0.0)
+    
         
     products=products_query.order_by(desc(Product.product_id)).all()
-    #response = make_response(render_template("products_list.html",data=products,mode="manage"))
+    
     results_list=[
         {"id": p.product_id, "name": p.name, "barcode": p.barcode, "price": p.current_price,"quantity":p.quantity_float} for p in products]
     return jsonify({
@@ -154,8 +151,24 @@ def export_products(user_id):
     # Write header row
     ws.append(["Name", "Barcode", "Quantity", "Price", "Purchase Price"])
 
-    # Fetch all products
-    products = Product.query.filter(Product.user_id==user_id).all()
+
+    #products filter
+    products_query = Product.query.filter(Product.user_id==user_id)
+    query=request.args.get("search")
+    quantity_filter=request.args.get("quantity_filter",type=int)
+    if query:
+        products_query = products_query.filter(
+        (Product.name.like(f"%{query}%")) |
+        (Product.barcode.like(f"%{query}%")))
+
+        
+    if quantity_filter==1:
+        products_query = products_query.filter(Product.quantity_float==0.0)
+    elif quantity_filter==2:
+        products_query = products_query.filter(Product.quantity_float>0.0)
+    
+        
+    products=products_query.order_by(desc(Product.product_id)).all()
 
     for p in products:
         # Get latest batch purchase price (or None if no batch exists)
@@ -175,24 +188,27 @@ def export_products(user_id):
         download_name="products.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-@api_products_bp.route("/products.pdf/<string:filt>/", defaults={"query": ""})
-@api_products_bp.route("/products.pdf/<string:filt>/<string:query>/",methods=["GET"])
+
+@api_products_bp.route("/products.pdf",methods=["GET"])
 @token_required
-def products_pdf(user_id,filt="0",query=""):
-    print(user_id,filt,query)
+def products_pdf(user_id):
     products_query = Product.query.filter(Product.user_id==user_id)
+    query=request.args.get("search")
+    quantity_filter=request.args.get("quantity_filter",type=int)
     if query:
         products_query = products_query.filter(
-            (Product.name.like(f"%{query}%")) |
-            (Product.barcode.like(f"%{query}%")))
-    if filt:
-       products_filter=int(filt)
-       if products_filter==1:
-             products_query = products_query.filter(Product.quantity_float==0.0)
-       elif products_filter==2:
-             products_query = products_query.filter(Product.quantity_float>0.0)
+        (Product.name.like(f"%{query}%")) |
+        (Product.barcode.like(f"%{query}%")))
+
+        
+    if quantity_filter==1:
+        products_query = products_query.filter(Product.quantity_float==0.0)
+    elif quantity_filter==2:
+        products_query = products_query.filter(Product.quantity_float>0.0)
+    
+        
     products=products_query.order_by(desc(Product.product_id)).all()
- 
+
     # render to PDF
     html = render_template("products_list_pdf_template.html", data=products)
     
