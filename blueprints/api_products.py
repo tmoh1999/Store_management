@@ -208,9 +208,15 @@ def products_pdf(user_id):
     
         
     products=products_query.order_by(desc(Product.product_id)).all()
-
+    columns=[
+        {"Name":"ID","accessor":"product_id"},
+        {"Name":"Name","accessor":"name"},
+        {"Name":"Barcode","accessor":"barcode"},
+        {"Name":"Price","accessor":"current_price"},
+        {"Name":"Quantity","accessor":"quantity_float"},
+    ]
     # render to PDF
-    html = render_template("products_list_pdf_template.html", data=products)
+    html = render_template("table_pdf_template.html", data=products,columns=columns,table_name="Products")
     
     css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
     
