@@ -2,7 +2,7 @@ from flask import  render_template, request, jsonify,redirect,url_for,make_respo
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from openpyxl import load_workbook,Workbook
-from sqlalchemy import desc
+from sqlalchemy import String, cast, desc,asc
 from weasyprint import HTML,CSS
 from decorators import token_required
 import io
@@ -139,7 +139,7 @@ def search_product(user_id):
             "success":False,
             "message":"product not found"
         })        
-@api_products_bp.route("/export", methods=["GET"])
+@api_products_bp.route("/export/excel", methods=["GET"])
 @token_required
 def export_products(user_id):
     
@@ -157,9 +157,19 @@ def export_products(user_id):
     query=request.args.get("search")
     quantity_filter=request.args.get("quantity_filter",type=int)
     if query:
+        search = f"%{query.lower()}%"
         products_query = products_query.filter(
-        (Product.name.like(f"%{query}%")) |
-        (Product.barcode.like(f"%{query}%")))
+            func.lower(
+                func.concat(
+                    cast(Product.product_id, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.current_price, String), " ",
+                    cast(Product.quantity_float, String)
+                )
+            ).like(search)
+    )
+
 
         
     if quantity_filter==1:
@@ -167,8 +177,25 @@ def export_products(user_id):
     elif quantity_filter==2:
         products_query = products_query.filter(Product.quantity_float>0.0)
     
-        
-    products=products_query.order_by(desc(Product.product_id)).all()
+     #products sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Product, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                products_query = products_query.order_by(column.asc())
+            else:
+                products_query = products_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            products_query = products_query.order_by(Product.product_id.desc())
+    else:
+        products_query = products_query.order_by(Product.product_id.desc())
+    products = products_query.all()
 
     for p in products:
         # Get latest batch purchase price (or None if no batch exists)
@@ -189,16 +216,25 @@ def export_products(user_id):
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-@api_products_bp.route("/products.pdf",methods=["GET"])
+@api_products_bp.route("/export/pdf",methods=["GET"])
 @token_required
 def products_pdf(user_id):
     products_query = Product.query.filter(Product.user_id==user_id)
     query=request.args.get("search")
     quantity_filter=request.args.get("quantity_filter",type=int)
     if query:
+        search = f"%{query.lower()}%"
         products_query = products_query.filter(
-        (Product.name.like(f"%{query}%")) |
-        (Product.barcode.like(f"%{query}%")))
+            func.lower(
+                func.concat(
+                    cast(Product.product_id, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.current_price, String), " ",
+                    cast(Product.quantity_float, String)
+                )
+            ).like(search)
+        )
 
         
     if quantity_filter==1:
@@ -206,8 +242,26 @@ def products_pdf(user_id):
     elif quantity_filter==2:
         products_query = products_query.filter(Product.quantity_float>0.0)
     
-        
-    products=products_query.order_by(desc(Product.product_id)).all()
+     #products sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Product, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                products_query = products_query.order_by(column.asc())
+            else:
+                products_query = products_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            products_query = products_query.order_by(Product.product_id.desc())
+    else:
+        products_query = products_query.order_by(Product.product_id.desc())
+    products = products_query.all()
+
     columns=[
         {"Name":"ID","accessor":"product_id"},
         {"Name":"Name","accessor":"name"},
@@ -215,13 +269,11 @@ def products_pdf(user_id):
         {"Name":"Price","accessor":"current_price"},
         {"Name":"Quantity","accessor":"quantity_float"},
     ]
+
     # render to PDF
     html = render_template("table_pdf_template.html", data=products,columns=columns,table_name="Products")
     
     css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
-    
-    pdf = HTML(string=html,base_url=current_app.root_path).write_pdf()
-    #pdf_bytes = HTML(string=html, base_url=app.root_path).write_pdf()
     pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
     pdf_file = io.BytesIO(pdf_bytes)
     return send_file(
