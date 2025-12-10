@@ -23,6 +23,31 @@ def addpurchase(user_id):
         "status":"purchase created",
         "id":new_purchase.purchase_id,
     })
+@api_purchases_bp.route("/search",methods=["GET"])
+@token_required
+def search_purchase(user_id):
+    
+    purchase_id=request.args.get("purchase_id",type=int) 
+    purchases_query=Purchases.query
+    if purchase_id:    
+        purchases_query=purchases_query.filter(Purchases.purchase_id==purchase_id)  
+    purchase:Purchases=purchases_query.first()
+    if purchase:
+        return jsonify({
+            "success":True,
+            "message":"purchase found",
+            "purchase_id":purchase.purchase_id,
+            "purchase_date":purchase.purchase_date,
+            "total_amount":purchase.total_amount,
+            "status":purchase.status,
+            "description":purchase.description
+        })
+    else:
+        return jsonify({
+            "success":False,
+            "message":"purchase not found"
+        })        
+
 @api_purchases_bp.route("",methods=["GET"])
 @token_required
 def purchaseList(user_id):

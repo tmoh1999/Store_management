@@ -21,6 +21,29 @@ def addsupplier(user_id):
         "success":True,
         "status":"supplier added ",
     })
+@api_suppliers_bp.route("/search",methods=["GET"])
+@token_required
+def search_supplier(user_id):
+    supplier_id=request.args.get("supplier_id",type=int) 
+    supplier_query=Suppliers.query
+    if supplier_id:    
+        supplier_query=supplier_query.filter(Suppliers.supplier_id==supplier_id)  
+    supplier:Suppliers=supplier_query.first()
+    if supplier:
+        return jsonify({
+            "success":True,
+            "message":"supplier found",
+            "supplier_id":supplier.supplier_id,
+            "name":supplier.name,
+            "email":supplier.email,
+            "phone":supplier.phone,
+        })
+    else:
+        return jsonify({
+            "success":False,
+            "message":"supplier not found"
+        })        
+
 @api_suppliers_bp.route("",methods=["GET"])
 @token_required
 def getSuppliers(user_id):

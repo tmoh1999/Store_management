@@ -18,6 +18,30 @@ def addsale(user_id):
        "sale_id":new_sale.sale_id,
        "sale_status":new_sale.status,
     })
+@api_sales_bp.route("/search",methods=["GET"])
+@token_required
+def search_sale(user_id):
+    
+    sale_id=request.args.get("sale_id",type=int) 
+    sales_query=Sales.query
+    if sale_id:    
+        sales_query=sales_query.filter(Sales.sale_id==sale_id)  
+    sale:Sales=sales_query.first()
+    if sale:
+        return jsonify({
+            "success":True,
+            "message":"sale found",
+            "sale_id":sale.sale_id,
+            "sale_date":sale.sale_date,
+            "total_amount":sale.total_amount,
+            "status":sale.status
+        })
+    else:
+        return jsonify({
+            "success":False,
+            "message":"sale not found"
+        })        
+
 @api_sales_bp.route("/items/add", methods=["POST"])
 @token_required
 def addsaleitem(user_id):

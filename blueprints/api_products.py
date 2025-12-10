@@ -114,17 +114,17 @@ def remove_product(user_id,product_id):
             "success": False,
             "status": "Data missing"
         })
-@api_products_bp.route("/search",methods=["POST"])
+@api_products_bp.route("/search",methods=["GET"])
 @token_required
 def search_product(user_id):
-    target=request.json["field"]
-    print(request.json)
-    if target=="barcode":
-        barcode=request.json["value"]
-        product:Product=Product.query.filter(Product.barcode==barcode).first()
-    else:
-        product_id=int(request.json["value"])  
-        product:Product=Product.query.filter(Product.product_id==product_id).first()    
+    barcode=request.args.get("barcode")
+    product_id=request.args.get("product_id",type=int) 
+    product_query=Product.query
+    if barcode:  
+        product_query=product_query.filter(Product.barcode==barcode)
+    if product_id:    
+        product_query=product_query.filter(Product.product_id==product_id)  
+    product:Product=product_query.first()
     if product:
         return jsonify({
             "success":True,
