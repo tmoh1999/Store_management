@@ -6,5 +6,8 @@
                 2. set null(supplier_id)
                 3. fake supplier(uknown)*****
             this applies to all forign keys
-            
+2. added sale/purchase report print  
+3. dashboard shows charts data
+4. table add date  a to b filter
+
         
