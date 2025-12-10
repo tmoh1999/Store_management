@@ -408,7 +408,7 @@ def products_pdf(filt,query=""):
     
  
     # render to PDF
-    html = render_template("products_list_pdf_template.html", data=products)
+    html = render_template("table_pdf_template.html", data=products)
     
     css_path = os.path.join(app.root_path, "static", "css","bootstrap.min.css")
     
