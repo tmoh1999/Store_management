@@ -1,8 +1,12 @@
-from flask import render_template, request, jsonify,redirect,url_for,make_response,Blueprint
+import io
+import os
+from flask import current_app, render_template, request, jsonify,redirect, send_file,url_for,make_response,Blueprint
 from datetime import date,timedelta,datetime
 from flask_sqlalchemy import SQLAlchemy
+from openpyxl import Workbook
 from sqlalchemy.sql import func
-from sqlalchemy import desc
+from sqlalchemy import String, cast, desc
+from weasyprint import CSS, HTML
 from models import *
 from decorators import token_required
 api_purchases_bp = Blueprint('api_purchases', __name__, url_prefix='/api/purchases')
@@ -286,3 +290,331 @@ def updatepurchaseitem(user_id):
         "success":False,
         "message":"item update failed",
     })
+@api_purchases_bp.route("/export/excel", methods=["GET"])
+@token_required
+def export_purchases(user_id):
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Purchases"
+
+    # Write header row
+    ws.append(["Purchase ID", "Date", "Total", "Status"])
+
+
+    #Purchases filter
+    purchases_query = Purchases.query.filter(Purchases.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        purchases_query = purchases_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Purchases.purchase_id, String), " ",
+                    cast(Purchases.purchase_date, String), " ",
+                    cast(Purchases.total_amount, String), " ",
+                    cast(Purchases.status, String), " ",
+                    cast(Purchases.description, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #purchases sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Purchases, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                purchases_query = purchases_query.order_by(column.asc())
+            else:
+                purchases_query = purchases_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            purchases_query = purchases_query.order_by(Purchases.purchase_id.desc())
+    else:
+        purchases_query = purchases_query.order_by(Purchases.purchase_id.desc())
+    
+    purchases = purchases_query.all()
+
+    for purchase in purchases:
+        ws.append([purchase.purchase_id,purchase.purchase_date, purchase.total_amount, purchase.status,purchase.description])
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="purchases.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_purchases_bp.route("/export/pdf",methods=["GET"])
+@token_required
+def purchases_pdf(user_id):
+    #Purchases filter
+    purchases_query = Purchases.query.filter(Purchases.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        purchases_query = purchases_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Purchases.purchase_id, String), " ",
+                    cast(Purchases.purchase_date, String), " ",
+                    cast(Purchases.total_amount, String), " ",
+                    cast(Purchases.status, String), " ",
+                    cast(Purchases.description, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #purchases sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Purchases, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                purchases_query = purchases_query.order_by(column.asc())
+            else:
+                purchases_query = purchases_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            purchases_query = purchases_query.order_by(Purchases.purchase_id.desc())
+    else:
+        purchases_query = purchases_query.order_by(Purchases.purchase_id.desc())
+    
+    purchases = purchases_query.all()
+
+    columns=[
+        {"Name":"ID","accessor":"purchase_id"},
+        {"Name":"Date","accessor":"purchase_date"},
+        {"Name":"Amount","accessor":"total_amount"},
+        {"Name":"Status","accessor":"status"},
+        {"Name":"Description","accessor":"description"},
+    ]
+
+    # render to PDF
+    html = render_template("table_pdf_template.html", data=purchases,columns=columns,table_name="Purchases")
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="purchases.pdf"  # filename for the browser
+    )	
+
+
+
+
+@api_purchases_bp.route("/items/export/excel", methods=["GET"])
+@token_required
+def export_purchasesItems(user_id):
+
+    purchase_id=request.args.get("purchase_id",type=int)
+    if not purchase_id:
+        return jsonify({
+            "success":False,
+            "message":"purchase_id missing"
+        })
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Purchase N°"+str(purchase_id)+" Items"
+
+    # Write header row
+    ws.append(["Item ID", "productBarcode","productName", "Price", "Quantity","Description"])
+
+
+    #purchasesitems filter
+    purchasesitems_query = (
+    PurchaseItems.query
+    .outerjoin(Product, Product.product_id == PurchaseItems.product_id)   # JOIN
+    .add_columns(
+        PurchaseItems.purchase_item_id,
+        PurchaseItems.purchase_id,
+        PurchaseItems.product_id,
+        PurchaseItems.quantity_float,
+        PurchaseItems.purchase_price,
+        Product.name,
+        Product.barcode
+    )
+    .filter(PurchaseItems.purchase_id == purchase_id)
+)
+
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        purchasesitems_query = purchasesitems_query.filter(
+            func.lower(
+                func.concat(
+                    cast(PurchaseItems.purchase_item_id, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(PurchaseItems.purchase_price, String), " ",
+                    cast(PurchaseItems.quantity_float, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #purchasesitems sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(PurchaseItems, sort_column, None)
+        column=column if column else getattr(Product, sort_column, None)
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                purchasesitems_query = purchasesitems_query.order_by(column.asc())
+            else:
+                purchasesitems_query = purchasesitems_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            purchasesitems_query = purchasesitems_query.order_by(PurchaseItems.purchase_item_id.desc())
+    else:
+        purchasesitems_query = purchasesitems_query.order_by(PurchaseItems.purchase_item_id.desc())
+    
+    purchase_items = purchasesitems_query.all()
+
+    for item in purchase_items:
+        ws.append([item.purchase_item_id,
+                   item.barcode if item.barcode else "",
+                   item.name if item.name else "",
+                   item.purchase_price,
+                   item.quantity_float,
+                   ]
+                   )
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="purchases.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_purchases_bp.route("/items/export/pdf",methods=["GET"])
+@token_required
+def purchaseItems_pdf(user_id):
+    purchase_id=request.args.get("purchase_id",type=int)
+    if not purchase_id:
+        return jsonify({
+            "success":False,
+            "message":"purchase_id missing"
+        })
+
+    #purchasesitems filter
+    purchasesitems_query = (
+    PurchaseItems.query
+    .outerjoin(Product, Product.product_id == PurchaseItems.product_id)   # JOIN
+    .add_columns(
+        PurchaseItems.purchase_item_id,
+        PurchaseItems.purchase_id,
+        PurchaseItems.product_id,
+        PurchaseItems.quantity_float,
+        PurchaseItems.purchase_price,
+        Product.name,
+        Product.barcode
+    )
+    .filter(PurchaseItems.purchase_id == purchase_id)
+)
+
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        purchasesitems_query = purchasesitems_query.filter(
+            func.lower(
+                func.concat(
+                    cast(PurchaseItems.purchase_item_id, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(PurchaseItems.purchase_price, String), " ",
+                    cast(PurchaseItems.quantity_float, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #purchasesitems sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(PurchaseItems, sort_column, None)
+        column=column if column else getattr(Product, sort_column, None)
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                purchasesitems_query = purchasesitems_query.order_by(column.asc())
+            else:
+                purchasesitems_query = purchasesitems_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            purchasesitems_query = purchasesitems_query.order_by(PurchaseItems.purchase_item_id.desc())
+    else:
+        purchasesitems_query = purchasesitems_query.order_by(PurchaseItems.purchase_item_id.desc())
+    
+    purchase_items = purchasesitems_query.all()
+
+    data=[
+        {
+           "item_id":item.purchase_item_id,
+           "barcode":item.barcode if item.barcode else "" ,
+           "name":item.name if item.name else "",
+           "unit_price":item.purchase_price,
+           "quantity_float":item.quantity_float,
+        }
+        for item in purchase_items
+    ]
+    columns=[
+        {"Name":"ID","accessor":"item_id"},
+        {"Name":"ProductBarcode","accessor":"barcode"},
+        {"Name":"ProductName","accessor":"name"},
+        {"Name":"Unit Price","accessor":"unit_price"},
+        {"Name":"Quantity","accessor":"quantity_float"},
+    ]
+
+    # render to PDF
+    html = render_template("table_pdf_template.html", data=data,columns=columns,table_name="Purchase N°"+str(purchase_id)+" Items")
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="purchasesitems.pdf"  # filename for the browser
+    )	

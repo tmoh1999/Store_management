@@ -1,8 +1,12 @@
-from flask import render_template, request, jsonify,redirect,url_for,make_response,Blueprint
+import io
+import os
+from flask import current_app, render_template, request, jsonify,redirect, send_file,url_for,make_response,Blueprint
 from datetime import date,timedelta
 from flask_sqlalchemy import SQLAlchemy
+from openpyxl import Workbook
 from sqlalchemy.sql import func
-from sqlalchemy import desc
+from sqlalchemy import String, cast, desc
+from weasyprint import CSS, HTML
 from models import *
 from decorators import token_required
 api_suppliers_bp = Blueprint('api_suppliers', __name__, url_prefix='/api/suppliers')
@@ -98,3 +102,133 @@ def edit_transaction(user_id,supplier_id):
             "success": False,
             "status": "Data missing"
         })
+@api_suppliers_bp.route("/export/excel", methods=["GET"])
+@token_required
+def export_suppliers(user_id):
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Suppliers"
+
+    # Write header row
+    ws.append(["Supplier ID", "Name", "Email", "Phone"])
+
+
+    #Suppliers filter
+    suppliers_query = Suppliers.query.filter(Suppliers.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        suppliers_query = suppliers_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Suppliers.supplier_id, String), " ",
+                    cast(Suppliers.name, String), " ",
+                    cast(Suppliers.email, String), " ",
+                    cast(Suppliers.phone, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #suppliers sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Suppliers, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                suppliers_query = suppliers_query.order_by(column.asc())
+            else:
+                suppliers_query = suppliers_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            suppliers_query = suppliers_query.order_by(Suppliers.supplier_id.desc())
+    else:
+        suppliers_query = suppliers_query.order_by(Suppliers.supplier_id.desc())
+    
+    suppliers = suppliers_query.all()
+
+    for supplier in suppliers:
+        ws.append([supplier.supplier_id,supplier.name, supplier.email, supplier.phone])
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="suppliers.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_suppliers_bp.route("/export/pdf",methods=["GET"])
+@token_required
+def suppliers_pdf(user_id):
+    #Suppliers filter
+    suppliers_query = Suppliers.query.filter(Suppliers.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        suppliers_query = suppliers_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Suppliers.supplier_id, String), " ",
+                    cast(Suppliers.name, String), " ",
+                    cast(Suppliers.email, String), " ",
+                    cast(Suppliers.phone, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #suppliers sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Suppliers, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                suppliers_query = suppliers_query.order_by(column.asc())
+            else:
+                suppliers_query = suppliers_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            suppliers_query = suppliers_query.order_by(Suppliers.supplier_id.desc())
+    else:
+        suppliers_query = suppliers_query.order_by(Suppliers.supplier_id.desc())
+    
+    suppliers = suppliers_query.all()
+
+    columns=[
+        {"Name":"ID","accessor":"supplier_id"},
+        {"Name":"Name","accessor":"name"},
+        {"Name":"Email","accessor":"email"},
+        {"Name":"Phone","accessor":"phone"},
+    ]
+
+    # render to PDF
+    html = render_template("table_pdf_template.html", data=suppliers,columns=columns,table_name="SUppliers")
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="suppliers.pdf"  # filename for the browser
+    )	

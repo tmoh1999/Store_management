@@ -1,8 +1,12 @@
-from flask import render_template, request, jsonify,redirect,url_for,make_response,Blueprint
+import io
+import os
+from flask import render_template, request, jsonify,redirect, send_file,url_for,make_response,Blueprint,current_app
 from datetime import date,timedelta
 from flask_sqlalchemy import SQLAlchemy
+from openpyxl import Workbook
 from sqlalchemy.sql import func
-from sqlalchemy import desc
+from sqlalchemy import String, cast, desc
+from weasyprint import CSS, HTML
 from models import *
 from decorators import token_required
 api_sales_bp = Blueprint('api_sales', __name__, url_prefix='/api/sales')
@@ -308,3 +312,337 @@ def getSalesList(user_id):
         "success":True,
         "results":results,
     })
+@api_sales_bp.route("/export/excel", methods=["GET"])
+@token_required
+def export_sales(user_id):
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sales"
+
+    # Write header row
+    ws.append(["Sale ID", "Date", "Total", "Status"])
+
+
+    #sales filter
+    sales_query = Sales.query.filter(Sales.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        sales_query = sales_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Sales.sale_id, String), " ",
+                    cast(Sales.sale_date, String), " ",
+                    cast(Sales.total_amount, String), " ",
+                    cast(Sales.status, String), " "
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #sales sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Sales, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                sales_query = sales_query.order_by(column.asc())
+            else:
+                sales_query = sales_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            sales_query = sales_query.order_by(Sales.sale_id.desc())
+    else:
+        sales_query = sales_query.order_by(Sales.sale_id.desc())
+    
+    sales = sales_query.all()
+
+    for sale in sales:
+        ws.append([sale.sale_id,sale.sale_date, sale.total_amount, sale.status])
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="sales.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_sales_bp.route("/export/pdf",methods=["GET"])
+@token_required
+def sales_pdf(user_id):
+    #sales filter
+    sales_query = Sales.query.filter(Sales.user_id==user_id)
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        sales_query = sales_query.filter(
+            func.lower(
+                func.concat(
+                    cast(Sales.sale_id, String), " ",
+                    cast(Sales.sale_date, String), " ",
+                    cast(Sales.total_amount, String), " ",
+                    cast(Sales.status, String), " "
+                )
+            ).like(search)
+    )
+
+
+        
+    
+     #sales sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(Sales, sort_column, None)
+
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                sales_query = sales_query.order_by(column.asc())
+            else:
+                sales_query = sales_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            sales_query = sales_query.order_by(Sales.sale_id.desc())
+    else:
+        sales_query = sales_query.order_by(Sales.sale_id.desc())
+    
+    sales = sales_query.all()
+
+    columns=[
+        {"Name":"ID","accessor":"sale_id"},
+        {"Name":"Date","accessor":"sale_date"},
+        {"Name":"Amount","accessor":"total_amount"},
+        {"Name":"Status","accessor":"status"},
+    ]
+
+    # render to PDF
+    html = render_template("table_pdf_template.html", data=sales,columns=columns,table_name="Sales")
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="sales.pdf"  # filename for the browser
+    )	
+
+
+
+
+@api_sales_bp.route("/items/export/excel", methods=["GET"])
+@token_required
+def export_salesItems(user_id):
+
+    sale_id=request.args.get("sale_id",type=int)
+    if not sale_id:
+        return jsonify({
+            "success":False,
+            "message":"sale_id missing"
+        })
+    
+    # Create a new Excel workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Sale N°"+str(sale_id)+" Items"
+
+    # Write header row
+    ws.append(["Item ID", "productBarcode","productName", "Price", "Quantity","Description"])
+
+
+    #salesitems filter
+    salesitems_query = (
+    SaleItems.query
+    .outerjoin(Product, Product.product_id == SaleItems.product_id)   # JOIN
+    .add_columns(
+        SaleItems.item_id,
+        SaleItems.sale_id,
+        SaleItems.product_id,
+        SaleItems.quantity_float,
+        SaleItems.unit_price,
+        SaleItems.description,
+        Product.name,
+        Product.barcode
+    )
+    .filter(SaleItems.sale_id == sale_id)
+)
+
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        salesitems_query = salesitems_query.filter(
+            func.lower(
+                func.concat(
+                    cast(SaleItems.item_id, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(SaleItems.unit_price, String), " ",
+                    cast(SaleItems.quantity_float, String), " ",
+                    cast(SaleItems.description, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #salesitems sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(SaleItems, sort_column, None)
+        column=column if column else getattr(Product, sort_column, None)
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                salesitems_query = salesitems_query.order_by(column.asc())
+            else:
+                salesitems_query = salesitems_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            salesitems_query = salesitems_query.order_by(SaleItems.item_id.desc())
+    else:
+        salesitems_query = salesitems_query.order_by(SaleItems.item_id.desc())
+    
+    sale_items = salesitems_query.all()
+
+    for item in sale_items:
+        ws.append([item.item_id,
+                   item.barcode if item.barcode else "",
+                   item.name if item.name else "",
+                   item.unit_price,
+                   item.quantity_float,
+                   item.description]
+                   )
+
+    # Save to in-memory file
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+
+    return send_file(
+        file_stream,
+        as_attachment=True,
+        download_name="sales.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@api_sales_bp.route("/items/export/pdf",methods=["GET"])
+@token_required
+def saleItems_pdf(user_id):
+    sale_id=request.args.get("sale_id",type=int)
+    if not sale_id:
+        return jsonify({
+            "success":False,
+            "message":"sale_id missing"
+        })
+
+    #salesitems filter
+    salesitems_query = (
+    SaleItems.query
+    .outerjoin(Product, Product.product_id == SaleItems.product_id)   # JOIN
+    .add_columns(
+        SaleItems.item_id,
+        SaleItems.sale_id,
+        SaleItems.product_id,
+        SaleItems.quantity_float,
+        SaleItems.unit_price,
+        SaleItems.description,
+        Product.name,
+        Product.barcode
+    )
+    .filter(SaleItems.sale_id == sale_id)
+)
+
+    query=request.args.get("search")
+    if query:
+        search = f"%{query.lower()}%"
+        salesitems_query = salesitems_query.filter(
+            func.lower(
+                func.concat(
+                    cast(SaleItems.item_id, String), " ",
+                    cast(Product.barcode, String), " ",
+                    cast(Product.name, String), " ",
+                    cast(SaleItems.unit_price, String), " ",
+                    cast(SaleItems.quantity_float, String), " ",
+                    cast(SaleItems.description, String), " ",
+                )
+            ).like(search)
+        )
+
+
+        
+    
+     #salesitems sort
+    sort_column=request.args.get("sort_column")
+    
+    if sort_column:
+        column = getattr(SaleItems, sort_column, None)
+        column=column if column else getattr(Product, sort_column, None)
+        print("column::",column)
+        if column:
+            print("sort_column::",sort_column)
+            sort_direction=request.args.get("sort_direction")
+            if sort_direction == "asc":
+                salesitems_query = salesitems_query.order_by(column.asc())
+            else:
+                salesitems_query = salesitems_query.order_by(column.desc())
+        else:
+            # default sort fallback
+            salesitems_query = salesitems_query.order_by(SaleItems.item_id.desc())
+    else:
+        salesitems_query = salesitems_query.order_by(SaleItems.item_id.desc())
+    
+    sale_items = salesitems_query.all()
+
+    data=[
+        {
+           "item_id":item.item_id,
+           "barcode":item.barcode if item.barcode else "" ,
+           "name":item.name if item.name else "",
+           "unit_price":item.unit_price,
+           "quantity_float":item.quantity_float,
+           "description":item.description,
+
+        }
+        for item in sale_items
+    ]
+    print("ssss:",data[0])
+    columns=[
+        {"Name":"ID","accessor":"item_id"},
+        {"Name":"ProductBarcode","accessor":"barcode"},
+        {"Name":"ProductName","accessor":"name"},
+        {"Name":"Unit Price","accessor":"unit_price"},
+        {"Name":"Quantity","accessor":"quantity_float"},
+        {"Name":"Description","accessor":"description"},
+    ]
+
+    # render to PDF
+    html = render_template("table_pdf_template.html", data=data,columns=columns,table_name="Sale N°"+str(sale_id)+" Items")
+    
+    css_path = os.path.join(current_app.root_path, "static", "css","bootstrap.min.css")
+    pdf_bytes = HTML(string=html, base_url=current_app.root_path).write_pdf(stylesheets=[CSS(css_path)])
+    pdf_file = io.BytesIO(pdf_bytes)
+    return send_file(
+        pdf_file,
+        mimetype="application/pdf",
+        as_attachment=True,          # True → download, False → open in browser
+        download_name="salesitems.pdf"  # filename for the browser
+    )	
