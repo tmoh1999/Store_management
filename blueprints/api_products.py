@@ -149,7 +149,7 @@ def export_products(user_id):
     ws.title = "Products"
 
     # Write header row
-    ws.append(["Name", "Barcode", "Quantity", "Price", "Purchase Price"])
+    ws.append(["Name", "Barcode", "Quantity", "Price"])
 
 
     #products filter
@@ -198,11 +198,7 @@ def export_products(user_id):
     products = products_query.all()
 
     for p in products:
-        # Get latest batch purchase price (or None if no batch exists)
-        item = PurchaseItems.query.filter_by(product_id=p.product_id).order_by(PurchaseItems.purchase_id.desc()).first()
-        purchase_price = item.purchase_price if item else None
-
-        ws.append([p.name, p.barcode, p.quantity_float, p.current_price, purchase_price])
+        ws.append([p.name, p.barcode, p.quantity_float, p.current_price])
 
     # Save to in-memory file
     file_stream = io.BytesIO()
