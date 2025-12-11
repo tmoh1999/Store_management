@@ -21,10 +21,10 @@
                </thead>
         <tbody class="text-center">
         {% for row in data %}
-            {% set r=row.__dict__ %}
+            {% set r=row if row is mapping else row.__dict__ %}
             <tr>
                 {% for col in columns %}
-                    <td class="titles">{{r[col["accessor"]]}}</td>
+                    <td class="titles">{{rx}}{{r[col["accessor"]]}}</td>
                 {% endfor %}    
             </tr>
         {% endfor %}
