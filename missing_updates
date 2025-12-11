@@ -10,4 +10,8 @@
 3. dashboard shows charts data
 4. table add date  a to b filter
 
+errors:
+when removeing saleitems in api_sale.py
+sale dont change total
+
         
