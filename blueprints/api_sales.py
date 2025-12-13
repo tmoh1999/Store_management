@@ -45,7 +45,21 @@ def search_sale(user_id):
             "success":False,
             "message":"sale not found"
         })        
-
+def recalculteSaleTotal(sale_id,user_id):
+    sale=Sales.query.filter(Sales.sale_id==sale_id).first()
+    if sale:
+        total=0
+        items=SaleItems.query.filter(SaleItems.sale_id==sale_id).all()
+        for item in items:
+            total+=item.quantity_float*item.unit_price
+        
+        sale.total_amount=total
+        transaction=Transactions.query.filter(Transactions.sale_id==sale.sale_id,Transactions.user_id==user_id)
+        if transaction:
+            transaction.amount=total
+        db2.session.commit()
+        return total
+    return 0
 @api_sales_bp.route("/items/add", methods=["POST"])
 @token_required
 def addsaleitem(user_id):
@@ -71,6 +85,7 @@ def addsaleitem(user_id):
                     })
                 item.quantity_float+=quantity
                 db2.session.commit()
+                recalculteSaleTotal(sale_id,user_id)
                 return jsonify({
                         "success": True,
                         "message": "item found and updated",
@@ -86,7 +101,7 @@ def addsaleitem(user_id):
     db2.session.add(new_sale_item)
     db2.session.commit()
     print(new_sale_item,new_sale_item.description)
-    
+    recalculteSaleTotal(sale_id,user_id)
     return jsonify({
               "success": True,
               "message": "item added",
@@ -194,12 +209,9 @@ def updatesaleitem(user_id):
         
        db2.session.commit()
     
-    transaction=Transactions.query.filter(Transactions.sale_id==item.sale_id,Transactions.user_id==user_id).first()
     results2 = SaleItems.query.filter(SaleItems.sale_id==item.sale_id).all()
     result_list2=[]
-    total=0
     for r in results2:
-        total+=r.quantity_float*r.unit_price
         if r.product_id:
             p = Product.query.filter(Product.product_id==r.product_id,Product.user_id==user_id).first()
             x={"item_id": r.item_id, "name": p.name, "barcode": p.barcode, "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}
@@ -207,12 +219,8 @@ def updatesaleitem(user_id):
            x={"item_id": r.item_id, "name": "", "barcode": "",  "price": r.unit_price,"quantity":r.quantity_float,"description":r.description,"profit":r.profit}    
            
         result_list2.append(x)
-    sale.total_amount=total
-    
-    print(len(results2))
-    if transaction:
-       transaction.amount=total
     db2.session.commit()
+    recalculteSaleTotal(item.sale_id,user_id)    
     return jsonify({
               "success": True
     })
@@ -224,6 +232,7 @@ def removesaleitem(user_id,item_id):
         rollBackSaleItem(item.item_id,user_id)
         db2.session.delete(item)
         db2.session.commit()
+        recalculteSaleTotal(item.sale_id,user_id)
         return jsonify({
               "success": True,
               "message":"item removed"
